@@ -1,0 +1,12 @@
+[build]
+  command = "npm install && npm run build"
+  publish = "dist"
+
+[build.environment]
+  VITE_SUPABASE_URL = "https://nzyenvwmnaokqsxsjcyf.supabase.co"
+  VITE_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_P7OYNZVEoAnNe-FYyBUoSw__MWfgn58"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
