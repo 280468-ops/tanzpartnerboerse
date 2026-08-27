@@ -1562,75 +1562,6 @@ function Contacts({ userId }) {
 
 
 function AdminPanel() {
-  const [users, setUsers] = useState([]);
-  const [workshops, setWorkshops] = useState([]);
-  const [contacts, setContacts] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  async function loadAdminData() {
-    setLoading(true);
-
-    const [{ data: profileData, error: profileError },
-      { data: workshopData },
-      { data: contactData }] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id,display_name,age,gender,height_cm,is_visible,is_blocked")
-        .order("display_name"),
-      supabase
-        .from("workshops")
-        .select("id,title,starts_at,location")
-        .order("starts_at"),
-      supabase
-        .from("contact_requests")
-        .select("id,requester_id,recipient_id,workshop_id,status,created_at")
-        .order("created_at", { ascending: false })
-    ]);
-
-    if (profileError) {
-      alert("Nutzer konnten nicht geladen werden: " + profileError.message);
-    }
-
-    setUsers(profileData || []);
-    setWorkshops(workshopData || []);
-    setContacts(contactData || []);
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    loadAdminData();
-  }, []);
-
-  async function toggleBlocked(user) {
-    const next = user.is_blocked !== true;
-    const action = next ? "sperren" : "entsperren";
-
-    if (!confirm(
-      `${user.display_name || "Diesen Nutzer"} wirklich ${action}?`
-    )) return;
-
-    const { error } = await supabase
-      .from("profiles")
-      .update({ is_blocked: next })
-      .eq("id", user.id);
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    await loadAdminData();
-  }
-
-  if (loading) {
-    return (
-      <section>
-        <h2>🔐 Administrator</h2>
-        <div className="card">Daten werden geladen…</div>
-      </section>
-    );
-  }
-
   return (
     <section>
       <div className="hero">
@@ -1640,103 +1571,26 @@ function AdminPanel() {
 
       <div className="grid">
         <article className="profile-card">
-          <h3>👥 Nutzer</h3>
-          <div className="big-number">{users.length}</div>
-          <div className="muted">registrierte Profile</div>
+          <h3>👥 Nutzerverwaltung</h3>
+          <p className="muted">
+            Hier können später Nutzer verwaltet und gesperrt werden.
+          </p>
         </article>
 
         <article className="profile-card">
           <h3>🎟️ Workshops</h3>
-          <div className="big-number">{workshops.length}</div>
-          <div className="muted">eingetragene Workshops</div>
+          <p className="muted">
+            Hier können später Workshops verwaltet werden.
+          </p>
         </article>
 
         <article className="profile-card">
-          <h3>💬 Kontakte</h3>
-          <div className="big-number">{contacts.length}</div>
-          <div className="muted">Kontaktanfragen</div>
+          <h3>💬 Kontaktanfragen</h3>
+          <p className="muted">
+            Hier können später Kontaktanfragen verwaltet werden.
+          </p>
         </article>
       </div>
-
-      <h3>👥 Nutzerverwaltung</h3>
-
-      {users.length === 0 ? (
-        <div className="card">Keine Nutzer vorhanden.</div>
-      ) : (
-        <div className="grid">
-          {users.map(user => (
-            <article className="profile-card" key={user.id}>
-              <h3>{user.display_name || "Tanzpartner/in"}</h3>
-
-              <div className="muted">
-                {[
-                  user.age ? `${user.age} Jahre` : null,
-                  user.gender,
-                  user.height_cm ? `${user.height_cm} cm` : null
-                ].filter(Boolean).join(" · ")}
-              </div>
-
-              <p>
-                {user.is_blocked
-                  ? "🔒 Nutzer ist gesperrt"
-                  : "✅ Nutzer ist aktiv"}
-              </p>
-
-              <button
-                className={user.is_blocked ? "primary" : "ghost"}
-                onClick={() => toggleBlocked(user)}
-              >
-                {user.is_blocked ? "🔓 Entsperren" : "🔒 Nutzer sperren"}
-              </button>
-            </article>
-          ))}
-        </div>
-      )}
-
-      <h3>🎟️ Workshops</h3>
-
-      {workshops.length === 0 ? (
-        <div className="card">Keine Workshops vorhanden.</div>
-      ) : (
-        workshops.map(w => (
-          <div className="card row" key={w.id}>
-            <div>
-              <b>{w.title}</b>
-              <div className="muted">
-                {w.location || "Hazienda im Sonnenhof Aspach"}
-              </div>
-              <div className="muted">
-   {w.starts_at
-  ? new Date(w.starts_at).toLocaleString("de-DE", {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone: "Europe/Berlin"
-    })
-  : "Termin noch nicht festgelegt"}
-              </div>
-            </div>
-          </div>
-        ))
-      )}
-
-      <h3>💬 Kontaktanfragen</h3>
-
-      {contacts.length === 0 ? (
-        <div className="card">Keine Kontaktanfragen vorhanden.</div>
-      ) : (
-        contacts.map(c => (
-          <div className="card" key={c.id}>
-            <div className="muted">
-              Status: <b>{c.status}</b>
-            </div>
-            <div className="small">
-              {c.workshop_id
-                ? `Workshop-ID: ${c.workshop_id}`
-                : "Allgemeine Kontaktanfrage"}
-            </div>
-          </div>
-        ))
-      )}
     </section>
   );
 }
