@@ -254,7 +254,7 @@ function Auth() {
 }
 
 function Dashboard({ session }) {
-  const [tab, setTab] = useState("workshops");
+  const [tab, setTab] = useState("admin");
   const [profile, setProfile] = useState(null);
 
 const isAdmin =
