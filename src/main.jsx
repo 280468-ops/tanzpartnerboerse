@@ -16,21 +16,14 @@ function App() {
       setSession(data.session);
       setLoading(false);
     });
-
-    const { data: listener } =
-      supabase.auth.onAuthStateChange((_event, s) => {
-        setSession(s);
-      });
-
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+    });
     return () => listener.subscription.unsubscribe();
   }, []);
 
   if (loading) {
-    return (
-      <div className="center">
-        <div className="card">Lade Tanzpartnerbörse…</div>
-      </div>
-    );
+    return <div className="center"><div className="card">Lade Tanzpartnerbörse…</div></div>;
   }
 
   return session ? <Dashboard session={session} /> : <Auth />;
@@ -58,11 +51,7 @@ function Auth() {
         const { error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
-          options: {
-            data: {
-              display_name: displayName.trim()
-            }
-          }
+          options: { data: { display_name: displayName.trim() } }
         });
 
         if (error) throw error;
@@ -71,18 +60,15 @@ function Auth() {
           "Registrierung erfolgreich. Falls E-Mail-Bestätigung aktiviert ist, prüfe bitte dein Postfach."
         );
       } else {
-        const { error } =
-          await supabase.auth.signInWithPassword({
-            email: email.trim(),
-            password
-          });
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password
+        });
 
         if (error) throw error;
       }
     } catch (err) {
-      setMessage(
-        err.message || "Es ist ein Fehler aufgetreten."
-      );
+      setMessage(err.message || "Es ist ein Fehler aufgetreten.");
     } finally {
       setBusy(false);
     }
@@ -93,7 +79,6 @@ function Auth() {
       <div className="auth-card">
         <div className="logo">💃🕺</div>
         <h1>Tanzpartnerbörse</h1>
-
         <p className="muted">
           Finde Menschen, die deine Leidenschaft fürs Tanzen teilen.
         </p>
@@ -105,7 +90,6 @@ function Auth() {
           >
             Anmelden
           </button>
-
           <button
             className={mode === "register" ? "active" : ""}
             onClick={() => setMode("register")}
@@ -120,9 +104,7 @@ function Auth() {
               Anzeigename
               <input
                 value={displayName}
-                onChange={(e) =>
-                  setDisplayName(e.target.value)
-                }
+                onChange={e => setDisplayName(e.target.value)}
                 placeholder="z. B. Alex"
               />
             </label>
@@ -133,9 +115,7 @@ function Auth() {
             <input
               type="email"
               value={email}
-              onChange={(e) =>
-                setEmail(e.target.value)
-              }
+              onChange={e => setEmail(e.target.value)}
               placeholder="name@beispiel.de"
               required
             />
@@ -146,19 +126,14 @@ function Auth() {
             <input
               type="password"
               value={password}
-              onChange={(e) =>
-                setPassword(e.target.value)
-              }
+              onChange={e => setPassword(e.target.value)}
               placeholder="Mindestens 6 Zeichen"
               required
               minLength="6"
             />
           </label>
 
-          <button
-            className="primary wide"
-            disabled={busy}
-          >
+          <button className="primary wide" disabled={busy}>
             {busy
               ? "Bitte warten…"
               : mode === "login"
@@ -167,9 +142,7 @@ function Auth() {
           </button>
         </form>
 
-        {message && (
-          <div className="notice">{message}</div>
-        )}
+        {message && <div className="notice">{message}</div>}
       </div>
     </div>
   );
@@ -178,8 +151,6 @@ function Auth() {
 function Dashboard({ session }) {
   const [tab, setTab] = useState("workshops");
   const [profile, setProfile] = useState(null);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [notification, setNotification] = useState(null);
 
   async function logout() {
     await supabase.auth.signOut();
@@ -194,157 +165,24 @@ function Dashboard({ session }) {
       .then(({ data }) => setProfile(data));
   }, [session.user.id]);
 
-  useEffect(() => {
-    const userId = session.user.id;
-    const key = `tpb_last_read_${userId}`;
-
-    async function loadUnread() {
-      const lastRead = localStorage.getItem(key);
-
-      let query = supabase
-        .from("messages")
-        .select(
-          "id,sender_id,recipient_id,body,created_at"
-        )
-        .eq("recipient_id", userId)
-        .order("created_at", {
-          ascending: true
-        });
-
-      if (lastRead) {
-        query = query.gt(
-          "created_at",
-          lastRead
-        );
-      }
-
-      const { data, error } = await query;
-
-      if (!error) {
-        setUnreadCount(
-          (data || []).length
-        );
-      }
-    }
-
-    loadUnread();
-
-    const channel = supabase
-      .channel(`notifications-${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `recipient_id=eq.${userId}`
-        },
-        async (payload) => {
-          const message = payload.new;
-
-          setUnreadCount(
-            (count) => count + 1
-          );
-
-          const { data: sender } =
-            await supabase
-              .from("profiles")
-              .select("display_name")
-              .eq(
-                "id",
-                message.sender_id
-              )
-              .maybeSingle();
-
-          setNotification({
-            name:
-              sender?.display_name ||
-              "Tanzpartner/in",
-            body:
-              message.body ||
-              "Neue Nachricht"
-          });
-
-          setTimeout(() => {
-            setNotification(null);
-          }, 5000);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [session.user.id]);
-
   return (
     <div className="app">
-      {notification && (
-        <button
-          className="notice success"
-          style={{
-            position: "fixed",
-            top: "80px",
-            left: "16px",
-            right: "16px",
-            zIndex: 1000,
-            textAlign: "left",
-            cursor: "pointer",
-            border: "none"
-          }}
-          onClick={() => {
-            setNotification(null);
-            setTab("kontakte");
-          }}
-        >
-          💬{" "}
-          <b>
-            Neue Nachricht von{" "}
-            {notification.name}
-          </b>
-
-          <br />
-
-          <span className="small">
-            {notification.body}
-          </span>
-
-          <br />
-
-          <span className="small">
-            Tippen zum Öffnen
-          </span>
-        </button>
-      )}
-
       <header>
         <div>
-          <div className="brand">
-            💃🕺 Tanzpartnerbörse
-          </div>
-
+          <div className="brand">💃🕺 Tanzpartnerbörse</div>
           <div className="small">
-            Hallo{" "}
-            {profile?.display_name ||
-              "Tanzfreund"}!
+            Hallo {profile?.display_name || "Tanzfreund"}!
           </div>
         </div>
 
-        <button
-          className="ghost"
-          onClick={logout}
-        >
+        <button className="ghost" onClick={logout}>
           Abmelden
         </button>
       </header>
 
       <main>
         {tab === "workshops" && (
-          <Workshops
-            currentUser={
-              session.user.id
-            }
-          />
+          <Workshops currentUser={session.user.id} />
         )}
 
         {tab === "profil" && (
@@ -356,110 +194,47 @@ function Dashboard({ session }) {
         )}
 
         {tab === "favoriten" && (
-          <Favorites
-            userId={session.user.id}
-          />
+          <Favorites userId={session.user.id} />
         )}
 
         {tab === "kontakte" && (
-          <Contacts
-            userId={session.user.id}
-            unreadCount={unreadCount}
-            setUnreadCount={
-              setUnreadCount
-            }
-          />
+          <Contacts userId={session.user.id} />
         )}
       </main>
 
       <nav>
         <button
-          className={
-            tab === "workshops"
-              ? "selected"
-              : ""
-          }
-          onClick={() =>
-            setTab("workshops")
-          }
+          className={tab === "workshops" ? "selected" : ""}
+          onClick={() => setTab("workshops")}
         >
-          🎟️
-          <span>Workshops</span>
+          🎟️<span>Workshops</span>
         </button>
 
         <button
-          className={
-            tab === "favoriten"
-              ? "selected"
-              : ""
-          }
-          onClick={() =>
-            setTab("favoriten")
-          }
+          className={tab === "favoriten" ? "selected" : ""}
+          onClick={() => setTab("favoriten")}
         >
-          ❤️
-          <span>Favoriten</span>
+          ❤️<span>Favoriten</span>
         </button>
 
         <button
-          className={
-            tab === "kontakte"
-              ? "selected"
-              : ""
-          }
-          onClick={() =>
-            setTab("kontakte")
-          }
-          style={{
-            position: "relative"
-          }}
+          className={tab === "kontakte" ? "selected" : ""}
+          onClick={() => setTab("kontakte")}
         >
-          💬
-          <span>Kontakte</span>
-
-          {unreadCount > 0 && (
-            <span
-              style={{
-                position: "absolute",
-                top: "0",
-                right: "8px",
-                minWidth: "22px",
-                height: "22px",
-                padding: "0 5px",
-                borderRadius: "999px",
-                background: "#e53935",
-                color: "#fff",
-                fontSize: "13px",
-                fontWeight: "700",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center"
-              }}
-            >
-              {unreadCount > 99
-                ? "99+"
-                : unreadCount}
-            </span>
-          )}
+          💬<span>Kontakte</span>
         </button>
 
         <button
-          className={
-            tab === "profil"
-              ? "selected"
-              : ""
-          }
-          onClick={() =>
-            setTab("profil")
-          }
+          className={tab === "profil" ? "selected" : ""}
+          onClick={() => setTab("profil")}
         >
-          👤
-          <span>Profil</span>
+          👤<span>Profil</span>
         </button>
       </nav>
     </div>
   );
-      }
+}
+
 function Workshops({ currentUser }) {
   const [workshops, setWorkshops] = useState([]);
   const [myInterests, setMyInterests] = useState(new Set());
@@ -478,9 +253,7 @@ function Workshops({ currentUser }) {
     ] = await Promise.all([
       supabase
         .from("workshops")
-        .select(
-          "id,title,starts_at,location,booking_url,dance_styles(name)"
-        )
+        .select("id,title,starts_at,location,booking_url,dance_styles(name)")
         .order("starts_at"),
 
       supabase
@@ -491,19 +264,15 @@ function Workshops({ currentUser }) {
       supabase
         .from("workshop_pairs")
         .select("workshop_id,user1_id,user2_id")
-        .or(
-          `user1_id.eq.${currentUser},user2_id.eq.${currentUser}`
-        )
+        .or(`user1_id.eq.${currentUser},user2_id.eq.${currentUser}`)
     ]);
 
     if (wsError) alert(wsError.message);
 
     setWorkshops(ws || []);
-
     setMyInterests(
       new Set((interests || []).map(x => x.workshop_id))
     );
-
     setMyPairs(
       new Set((pairs || []).map(x => x.workshop_id))
     );
@@ -526,10 +295,7 @@ function Workshops({ currentUser }) {
       ]);
 
       const paired = new Set(
-        (wp || []).flatMap(p => [
-          p.user1_id,
-          p.user2_id
-        ])
+        (wp || []).flatMap(p => [p.user1_id, p.user2_id])
       );
 
       map[w.id] = (wi || [])
@@ -557,9 +323,7 @@ function Workshops({ currentUser }) {
 
   function formatGermanDateTime(iso) {
     const start = new Date(iso);
-    const end = new Date(
-      start.getTime() + 60 * 60 * 1000
-    );
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
 
     const date = new Intl.DateTimeFormat("de-DE", {
       timeZone: "Europe/Berlin",
@@ -624,23 +388,255 @@ function Workshops({ currentUser }) {
 
     if (error) return alert(error.message);
 
-    setMyInterests(
-      prev => new Set(prev).add(workshopId)
-    );
-
+    setMyInterests(prev => new Set(prev).add(workshopId));
     await load();
   }
 
-  async function contactForWorkshop(
-    workshopId,
-    recipientId
-  ) {
+  async function contactForWorkshop(workshopId, recipientId) {
     if (myPairs.has(workshopId)) return;
 
     const { error } = await supabase
       .from("contact_requests")
       .insert({
-       function ProfileEditor({ user, profile, setProfile }) {
+        requester_id: currentUser,
+        recipient_id: recipientId,
+        workshop_id: workshopId,
+        status: "pending"
+      });
+
+    if (error) {
+      return alert(
+        error.message.includes("duplicate") ||
+          error.code === "23505"
+          ? "Für diesen Workshop besteht bereits eine Anfrage."
+          : error.message
+      );
+    }
+
+    alert("Kontaktanfrage für diesen Workshop gesendet 💬");
+  }
+
+  return (
+    <section>
+      <div className="hero">
+        <h2>Sonntags-Workshops</h2>
+        <p>
+          Finde einen Tanzpartner für genau den Workshop, an dem du
+          teilnehmen möchtest.
+        </p>
+      </div>
+
+      {busy ? (
+        <div className="card">Workshops werden geladen…</div>
+      ) : workshops.length === 0 ? (
+        <div className="card">
+          Noch keine Workshops eingetragen.
+        </div>
+      ) : (
+        <div className="grid">
+          {workshops.map(w => {
+            const dt = formatGermanDateTime(w.starts_at);
+            const interested = myInterests.has(w.id);
+            const paired = myPairs.has(w.id);
+            const openSeekers = seekers[w.id] || [];
+
+            return (
+              <article className="profile-card" key={w.id}>
+                <div className="workshop-date">
+                  🎟️ {dt.date}
+                </div>
+
+                <h3>{w.title}</h3>
+
+                <div className="muted">
+                  💃 {w.dance_styles?.name || w.title}
+                </div>
+
+                <p>
+                  🕓 <b>{dt.time}</b>
+                </p>
+
+                <div className="muted">
+                  📍 {w.location || "Hazienda im Sonnenhof Aspach"}
+                </div>
+
+                {paired ? (
+                  <div className="notice success">
+                    <div>✅ Tanzpartner gefunden</div>
+
+                    <button
+                      className="ghost"
+                      onClick={async () => {
+                        const { data: pair } = await supabase
+                          .from("workshop_pairs")
+                          .select("user1_id,user2_id")
+                          .eq("workshop_id", w.id)
+                          .or(
+                            `user1_id.eq.${currentUser},user2_id.eq.${currentUser}`
+                          )
+                          .maybeSingle();
+
+                        if (!pair) return;
+
+                        if (
+                          !confirm(
+                            "Tanzpartnerschaft für diesen Workshop wirklich auflösen?"
+                          )
+                        ) {
+                          return;
+                        }
+
+                        const { error } = await supabase
+                          .from("workshop_pairs")
+                          .delete()
+                          .eq("workshop_id", w.id)
+                          .in("user1_id", [
+                            pair.user1_id,
+                            pair.user2_id
+                          ]);
+
+                        if (error) return alert(error.message);
+
+                        await supabase
+                          .from("contact_requests")
+                          .update({ status: "cancelled" })
+                          .eq("workshop_id", w.id)
+                          .or(
+                            `requester_id.eq.${currentUser},recipient_id.eq.${currentUser}`
+                          )
+                          .eq("status", "accepted");
+
+                        await load();
+                      }}
+                    >
+                      Tanzpartnerschaft auflösen
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="actions">
+                      {!interested && (
+                        <select
+                          value={selectedLevels[w.id] || ""}
+                          onChange={e =>
+                            setSelectedLevels(prev => ({
+                              ...prev,
+                              [w.id]: e.target.value
+                            }))
+                          }
+                        >
+                          <option value="">
+                            ⭐ Niveau wählen
+                          </option>
+                          <option value="Anfänger">
+                            Anfänger
+                          </option>
+                          <option value="Mittelstufe">
+                            Mittelstufe
+                          </option>
+                          <option value="Fortgeschritten">
+                            Fortgeschritten
+                          </option>
+                        </select>
+                      )}
+
+                      <button
+                        className={
+                          interested ? "primary" : "ghost"
+                        }
+                        onClick={() =>
+                          toggleInterest(w.id)
+                        }
+                      >
+                        {interested
+                          ? "✓ Tanzpartner gesucht"
+                          : "Tanzpartner suchen"}
+                      </button>
+
+                      {w.booking_url && (
+                        <a
+                          className="primary"
+                          href={w.booking_url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Eventfrog
+                        </a>
+                      )}
+                    </div>
+
+                    {openSeekers.length > 0 && (
+                      <div className="seekers">
+                        <h4>
+                          👥 Sucht noch einen Tanzpartner
+                        </h4>
+
+                        {openSeekers.map(p => (
+                          <div
+                            className="row seeker"
+                            key={p.id}
+                          >
+                            <div>
+                              <b>
+                                {p.display_name}
+                                {p.age
+                                  ? `, ${p.age}`
+                                  : ""}
+                              </b>
+
+                              <div className="muted">
+                                {[
+                                  p.gender,
+                                  p.height_cm
+                                    ? `${p.height_cm} cm`
+                                    : null
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </div>
+
+                              <div className="muted">
+                                ⭐{" "}
+                                {p.workshop_level ||
+                                  "Niveau nicht angegeben"}
+                              </div>
+                            </div>
+
+                            <button
+                              className="primary"
+                              onClick={() =>
+                                contactForWorkshop(
+                                  w.id,
+                                  p.id
+                                )
+                              }
+                            >
+                              Kontakt aufnehmen
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {interested &&
+                      openSeekers.length === 0 && (
+                        <div className="muted">
+                          Noch keine weiteren offenen Suchenden
+                          für diesen Workshop.
+                        </div>
+                      )}
+                  </>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ProfileEditor({ user, profile, setProfile }) {
   const [form, setForm] = useState(profile || {});
   const [contact, setContact] = useState({
     email: user.email || "",
@@ -657,15 +653,15 @@ function Workshops({ currentUser }) {
       .select("email,phone,share_contacts")
       .eq("user_id", user.id)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data }) =>
         setContact(
           data || {
             email: user.email || "",
             phone: "",
             share_contacts: false
           }
-        );
-      });
+        )
+      );
   }, [profile, user.id, user.email]);
 
   function change(k, v) {
@@ -682,8 +678,9 @@ function Workshops({ currentUser }) {
 
     const payload = {
       id: user.id,
-      display_name:
-        (form.display_name || "Tanzpartner").trim(),
+      display_name: (
+        form.display_name || "Tanzpartner"
+      ).trim(),
       age: form.age ? Number(form.age) : null,
       gender: form.gender || null,
       height_cm: form.height_cm
@@ -704,19 +701,17 @@ function Workshops({ currentUser }) {
       return;
     }
 
-    const { error: contactError } =
-      await supabase
-        .from("contact_details")
-        .upsert({
-          user_id: user.id,
-          email:
-            (contact.email || user.email || "").trim() ||
-            null,
-          phone:
-            (contact.phone || "").trim() || null,
-          share_contacts:
-            contact.share_contacts === true
-        });
+    const { error: contactError } = await supabase
+      .from("contact_details")
+      .upsert({
+        user_id: user.id,
+        email:
+          (contact.email || user.email || "").trim() ||
+          null,
+        phone: (contact.phone || "").trim() || null,
+        share_contacts:
+          contact.share_contacts === true
+      });
 
     if (contactError) {
       alert(contactError.message);
@@ -733,19 +728,13 @@ function Workshops({ currentUser }) {
     <section>
       <h2>Mein Profil</h2>
 
-      <form
-        className="card form"
-        onSubmit={save}
-      >
+      <form className="card form" onSubmit={save}>
         <label>
           Anzeigename
           <input
             value={form.display_name || ""}
             onChange={e =>
-              change(
-                "display_name",
-                e.target.value
-              )
+              change("display_name", e.target.value)
             }
             required
           />
@@ -758,9 +747,7 @@ function Workshops({ currentUser }) {
             min="18"
             max="100"
             value={form.age || ""}
-            onChange={e =>
-              change("age", e.target.value)
-            }
+            onChange={e => change("age", e.target.value)}
           />
         </label>
 
@@ -769,36 +756,19 @@ function Workshops({ currentUser }) {
           <select
             value={form.gender || ""}
             onChange={e =>
-              change(
-                "gender",
-                e.target.value
-              )
+              change("gender", e.target.value)
             }
           >
-            <option value="">
-              Bitte auswählen
-            </option>
-
-            <option value="Frau">
-              Frau
-            </option>
-
-            <option value="Mann">
-              Mann
-            </option>
-
-            <option value="Divers">
-              Divers
-            </option>
+            <option value="">Bitte auswählen</option>
+            <option value="Frau">Frau</option>
+            <option value="Mann">Mann</option>
+            <option value="Divers">Divers</option>
           </select>
         </label>
 
         <label>
           Größe in cm{" "}
-          <span className="small">
-            (optional)
-          </span>
-
+          <span className="small">(optional)</span>
           <input
             type="number"
             min="120"
@@ -806,10 +776,7 @@ function Workshops({ currentUser }) {
             step="1"
             value={form.height_cm || ""}
             onChange={e =>
-              change(
-                "height_cm",
-                e.target.value
-              )
+              change("height_cm", e.target.value)
             }
             placeholder="z. B. 172"
           />
@@ -820,25 +787,19 @@ function Workshops({ currentUser }) {
         <h3>Kontaktdaten</h3>
 
         <p className="muted">
-          Diese Daten sind niemals öffentlich.
-          Sie werden erst sichtbar, wenn ihr euch
-          gegenseitig freigebt.
+          Diese Daten sind niemals öffentlich. Sie werden
+          erst sichtbar, wenn ihr euch gegenseitig
+          freigebt.
         </p>
 
         <label>
           E-Mail für den Kontakt{" "}
-          <span className="small">
-            (optional)
-          </span>
-
+          <span className="small">(optional)</span>
           <input
             type="email"
             value={contact.email || ""}
             onChange={e =>
-              changeContact(
-                "email",
-                e.target.value
-              )
+              changeContact("email", e.target.value)
             }
             placeholder="name@beispiel.de"
           />
@@ -846,18 +807,12 @@ function Workshops({ currentUser }) {
 
         <label>
           Telefon{" "}
-          <span className="small">
-            (optional)
-          </span>
-
+          <span className="small">(optional)</span>
           <input
             type="tel"
             value={contact.phone || ""}
             onChange={e =>
-              changeContact(
-                "phone",
-                e.target.value
-              )
+              changeContact("phone", e.target.value)
             }
             placeholder="z. B. 0170 1234567"
           />
@@ -876,25 +831,18 @@ function Workshops({ currentUser }) {
               )
             }
           />
-
-          Ich bin bereit, meine Kontaktdaten
-          mit meinem Tanzpartner zu teilen
+          Ich bin bereit, meine Kontaktdaten mit meinem
+          Tanzpartner zu teilen
         </label>
 
         <label className="check">
           <input
             type="checkbox"
-            checked={
-              form.is_visible !== false
-            }
+            checked={form.is_visible !== false}
             onChange={e =>
-              change(
-                "is_visible",
-                e.target.checked
-              )
+              change("is_visible", e.target.checked)
             }
           />
-
           Profil für andere sichtbar
         </label>
 
@@ -902,9 +850,7 @@ function Workshops({ currentUser }) {
           className="primary wide"
           disabled={busy}
         >
-          {busy
-            ? "Speichern…"
-            : "Profil speichern"}
+          {busy ? "Speichern…" : "Profil speichern"}
         </button>
       </form>
     </section>
@@ -921,9 +867,7 @@ function Favorites({ userId }) {
         "favorite_user_id, profiles:favorite_user_id(id,display_name,age)"
       )
       .eq("user_id", userId)
-      .then(({ data }) =>
-        setItems(data || [])
-      );
+      .then(({ data }) => setItems(data || []));
   }, [userId]);
 
   return (
@@ -937,10 +881,7 @@ function Favorites({ userId }) {
               className="profile-card"
               key={x.favorite_user_id}
             >
-              <div className="avatar">
-                💃
-              </div>
-
+              <div className="avatar">💃</div>
               <h3>
                 {x.profiles?.display_name}
                 {x.profiles?.age
@@ -959,12 +900,7 @@ function Favorites({ userId }) {
   );
 }
 
-function Chat({
-  userId,
-  contact,
-  onBack,
-  onRead
-}) {
+function Chat({ userId, contact, onBack }) {
   const [messages, setMessages] = useState([]);
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
@@ -978,76 +914,6 @@ function Chat({
     contact.requester_id === userId
       ? contact.recipient?.display_name
       : contact.requester?.display_name;
-
-  useEffect(() => {
-    localStorage.setItem(
-      `tpb_last_read_${userId}`,
-      new Date().toISOString()
-    );
-
-    onRead?.();
-
-    loadMessages();
-
-    const channel = supabase
-      .channel(`chat-${contact.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages"
-        },
-        payload => {
-          const m = payload.new;
-
-          const sameConversation =
-            (m.sender_id === userId &&
-              m.recipient_id === otherId) ||
-            (m.sender_id === otherId &&
-              m.recipient_id === userId);
-
-          const sameWorkshop =
-            !contact.workshop_id ||
-            m.workshop_id ===
-              contact.workshop_id;
-
-          if (
-            sameConversation &&
-            sameWorkshop
-          ) {
-            setMessages(prev =>
-              prev.some(
-                x => x.id === m.id
-              )
-                ? prev
-                : [...prev, m]
-            );
-
-            if (
-              m.recipient_id === userId
-            ) {
-              localStorage.setItem(
-                `tpb_last_read_${userId}`,
-                new Date().toISOString()
-              );
-
-              onRead?.();
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [
-    contact.id,
-    contact.workshop_id,
-    otherId,
-    userId
-  ]);
 
   async function loadMessages() {
     let q = supabase
@@ -1069,8 +935,7 @@ function Chat({
       );
     }
 
-    const { data, error } =
-      await q;
+    const { data, error } = await q;
 
     if (error) {
       alert(error.message);
@@ -1078,6 +943,52 @@ function Chat({
       setMessages(data || []);
     }
   }
+
+  useEffect(() => {
+    loadMessages();
+
+    const channel = supabase
+      .channel(`chat-${contact.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages"
+        },
+        payload => {
+          const m = payload.new;
+
+          if (
+            (m.sender_id === userId &&
+              m.recipient_id === otherId) ||
+            (m.sender_id === otherId &&
+              m.recipient_id === userId)
+          ) {
+            if (
+              !contact.workshop_id ||
+              m.workshop_id === contact.workshop_id
+            ) {
+              setMessages(prev =>
+                prev.some(x => x.id === m.id)
+                  ? prev
+                  : [...prev, m]
+              );
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [
+    contact.id,
+    contact.workshop_id,
+    otherId,
+    userId
+  ]);
 
   async function send(e) {
     e.preventDefault();
@@ -1088,31 +999,22 @@ function Chat({
 
     setBusy(true);
 
-    const { data, error } =
-      await supabase
-        .from("messages")
-        .insert({
-          sender_id: userId,
-          recipient_id: otherId,
-          workshop_id:
-            contact.workshop_id ||
-            null,
-          body: text
-        })
-        .select()
-        .single();
+    const { data, error } = await supabase
+      .from("messages")
+      .insert({
+        sender_id: userId,
+        recipient_id: otherId,
+        workshop_id:
+          contact.workshop_id || null,
+        body: text
+      })
+      .select()
+      .single();
 
     if (error) {
       alert(error.message);
     } else {
-      setMessages(prev =>
-        prev.some(
-          x => x.id === data.id
-        )
-          ? prev
-          : [...prev, data]
-      );
-
+      setMessages(prev => [...prev, data]);
       setBody("");
     }
 
@@ -1130,14 +1032,12 @@ function Chat({
 
       <h2>
         💬 Chat mit{" "}
-        {otherName ||
-          "Tanzpartner/in"}
+        {otherName || "Tanzpartner/in"}
       </h2>
 
       {contact.workshop_id && (
         <div className="notice success">
-          👫 Tanzpaar für diesen Workshop
-          gefunden
+          👫 Tanzpaar für diesen Workshop gefunden
         </div>
       )}
 
@@ -1162,17 +1062,15 @@ function Chat({
                     minute: "2-digit"
                   }
                 ).format(
-                  new Date(
-                    m.created_at
-                  )
+                  new Date(m.created_at)
                 )}
               </small>
             </div>
           ))
         ) : (
           <div className="muted">
-            Noch keine Nachricht.
-            Schreib einfach „Hallo“ 👋
+            Noch keine Nachricht. Schreib einfach
+            „Hallo“ 👋
           </div>
         )}
       </div>
@@ -1199,79 +1097,153 @@ function Chat({
       </form>
     </section>
   );
-          }
-    function Contacts({
-  userId,
-  unreadCount,
-  setUnreadCount
-}) {
-  const [items, setItems] = useState([]);
-  const [chat, setChat] = useState(null);
-  const [myShare, setMyShare] = useState(false);
-  const [sharedDetails, setSharedDetails] = useState({});
+}
 
-  async function load() {
-    const [
-      { data, error },
-      { data: mine }
-    ] = await Promise.all([
-      supabase
-        .from("contact_requests")
-        .select(
-          "*, requester:requester_id(id,display_name), recipient:recipient_id(id,display_name)"
-        )
-        .or(
-          `requester_id.eq.${userId},recipient_id.eq.${userId}`
-        )
-        .order("created_at", {
-          ascending: false
-        }),
+function ReportModal({ userId, reportedUserId, reportedName, onClose }) {
+  const [reason, setReason] = useState("");
+  const [details, setDetails] = useState("");
+  const [busy, setBusy] = useState(false);
 
-      supabase
-        .from("contact_details")
-        .select("share_contacts")
-        .eq("user_id", userId)
-        .maybeSingle()
-    ]);
+  async function submit(e) {
+    e.preventDefault();
+    if (!reason) return alert("Bitte wähle einen Grund aus.");
+    setBusy(true);
+
+    const { error } = await supabase.from("reports").insert({
+      reporter_id: userId,
+      reported_user_id: reportedUserId,
+      reason,
+      details: details.trim() || null,
+      status: "pending"
+    });
 
     if (error) {
       alert(error.message);
     } else {
-      setItems(data || []);
+      alert("Meldung wurde an den Admin gesendet. Der Admin entscheidet über weitere Maßnahmen.");
+      onClose();
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div className="card" style={{ marginTop: "12px" }}>
+      <h3>🚨 Nutzer melden</h3>
+      <p className="muted">
+        Du möchtest <b>{reportedName || "diesen Nutzer"}</b> melden?
+        Die Meldung geht ausschließlich an den Admin. Es wird nichts automatisch gelöscht.
+      </p>
+      <form className="form" onSubmit={submit}>
+        <label>
+          Grund
+          <select value={reason} onChange={e => setReason(e.target.value)} required>
+            <option value="">Bitte auswählen</option>
+            <option value="Unangemessenes Verhalten">Unangemessenes Verhalten</option>
+            <option value="Belästigung">Belästigung</option>
+            <option value="Falsche Angaben">Falsche Angaben</option>
+            <option value="Spam oder Werbung">Spam oder Werbung</option>
+            <option value="Sonstiges">Sonstiges</option>
+          </select>
+        </label>
+        <label>
+          Details <span className="small">(optional)</span>
+          <textarea
+            value={details}
+            onChange={e => setDetails(e.target.value)}
+            placeholder="Was ist passiert?"
+            maxLength={1000}
+            rows={4}
+          />
+        </label>
+        <div className="actions">
+          <button type="submit" className="primary" disabled={busy}>
+            {busy ? "Wird gesendet…" : "Meldung senden"}
+          </button>
+          <button type="button" className="ghost" onClick={onClose} disabled={busy}>
+            Abbrechen
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function Contacts({ userId }) {
+  const [items, setItems] = useState([]);
+  const [chat, setChat] = useState(null);
+  const [myShare, setMyShare] = useState(false);
+  const [sharedDetails, setSharedDetails] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [reportTarget, setReportTarget] = useState(null);
+
+  async function load() {
+    setLoading(true);
+
+    const { data: requests, error } = await supabase
+      .from("contact_requests")
+      .select(
+        `
+        *,
+        requester:requester_id(id,display_name),
+        recipient:recipient_id(id,display_name)
+      `
+      )
+      .or(
+        `requester_id.eq.${userId},recipient_id.eq.${userId}`
+      )
+      .order("created_at", {
+        ascending: false
+      });
+
+    if (error) {
+      alert(error.message);
+      setLoading(false);
+      return;
     }
 
-    setMyShare(
-      mine?.share_contacts === true
-    );
+    setItems(requests || []);
 
-    const accepted =
-      (data || []).filter(
-        i => i.status === "accepted"
-      );
+    const { data: mine } = await supabase
+      .from("contact_details")
+      .select("share_contacts")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const ownShare =
+      mine?.share_contacts === true;
+
+    setMyShare(ownShare);
+
+    const accepted = (requests || []).filter(
+      item => item.status === "accepted"
+    );
 
     const details = {};
 
-    for (const i of accepted) {
+    for (const item of accepted) {
       const otherId =
-        i.requester_id === userId
-          ? i.recipient_id
-          : i.requester_id;
+        item.requester_id === userId
+          ? item.recipient_id
+          : item.requester_id;
 
-      const { data: d } =
-        await supabase
-          .from("contact_details")
-          .select(
-            "email,phone,share_contacts"
-          )
-          .eq("user_id", otherId)
-          .maybeSingle();
+      const {
+        data: contactData,
+        error: contactError
+      } = await supabase
+        .from("contact_details")
+        .select(
+          "email,phone,share_contacts"
+        )
+        .eq("user_id", otherId)
+        .maybeSingle();
 
-      if (d) {
-        details[otherId] = d;
+      if (!contactError && contactData) {
+        details[otherId] = contactData;
       }
     }
 
     setSharedDetails(details);
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -1279,8 +1251,9 @@ function Chat({
   }, [userId]);
 
   async function accept(id) {
-    const item =
-      items.find(i => i.id === id);
+    const item = items.find(
+      i => i.id === id
+    );
 
     if (!item) return;
 
@@ -1290,75 +1263,57 @@ function Chat({
         item.recipient_id
       ].sort();
 
-      const {
-        error: pairError
-      } = await supabase
-        .from("workshop_pairs")
-        .insert({
-          workshop_id:
-            item.workshop_id,
-          user1_id: a,
-          user2_id: b
-        });
+      const { error: pairError } =
+        await supabase
+          .from("workshop_pairs")
+          .insert({
+            workshop_id: item.workshop_id,
+            user1_id: a,
+            user2_id: b
+          });
 
       if (pairError) {
         return alert(
           pairError.message.includes(
             "duplicate"
           ) ||
-          pairError.code === "23505"
+            pairError.code === "23505"
             ? "Für diesen Workshop hat bereits jemand einen Tanzpartner gefunden."
             : pairError.message
         );
       }
     }
 
-    const { error } =
-      await supabase
-        .from("contact_requests")
-        .update({
-          status: "accepted"
-        })
-        .eq("id", id);
+    const { error } = await supabase
+      .from("contact_requests")
+      .update({
+        status: "accepted"
+      })
+      .eq("id", id);
 
     if (error) {
-      return alert(error.message);
+      alert(error.message);
+      return;
     }
 
     await load();
   }
 
-  async function setSharing(
-    enabled
-  ) {
-    const { error } =
-      await supabase
-        .from("contact_details")
-        .upsert({
-          user_id: userId,
-          share_contacts:
-            enabled
-        });
+  async function setSharing(enabled) {
+    const { error } = await supabase
+      .from("contact_details")
+      .upsert({
+        user_id: userId,
+        share_contacts: enabled
+      });
 
     if (error) {
-      return alert(error.message);
+      alert(error.message);
+      return;
     }
 
     setMyShare(enabled);
     await load();
-  }
-
-  function openChat(item) {
-    setChat(item);
-  }
-
-  function markChatRead() {
-    setUnreadCount(0);
-
-    localStorage.setItem(
-      `tpb_last_read_${userId}`,
-      new Date().toISOString()
-    );
   }
 
   if (chat) {
@@ -1366,7 +1321,6 @@ function Chat({
       <Chat
         userId={userId}
         contact={chat}
-        onRead={markChatRead}
         onBack={() => {
           setChat(null);
           load();
@@ -1377,38 +1331,15 @@ function Chat({
 
   return (
     <section>
-      <h2>
-        Kontakte 💬{" "}
-        {unreadCount > 0 && (
-          <span
-            style={{
-              display: "inline-flex",
-              minWidth: "26px",
-              height: "26px",
-              padding: "0 7px",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: "999px",
-              background: "#e53935",
-              color: "#fff",
-              fontSize: "14px",
-              verticalAlign: "middle"
-            }}
-          >
-            {unreadCount}
-          </span>
-        )}
-      </h2>
+      <h2>Kontakte 💬</h2>
 
       <div className="card">
         <b>🔐 Kontaktdaten</b>
 
         <p className="muted">
-          Deine Telefonnummer und
-          E-Mail-Adresse werden erst
-          sichtbar, wenn du und dein
-          Tanzpartner sie beide
-          freigegeben habt.
+          Deine Telefonnummer und E-Mail-Adresse
+          werden erst sichtbar, wenn du und dein
+          Tanzpartner sie beide freigegeben habt.
         </p>
 
         {!myShare && (
@@ -1430,31 +1361,43 @@ function Chat({
         )}
       </div>
 
-      {items.length ? (
-        items.map(i => {
+      {reportTarget && (
+        <ReportModal
+          userId={userId}
+          reportedUserId={reportTarget.id}
+          reportedName={reportTarget.name}
+          onClose={() => setReportTarget(null)}
+        />
+      )}
+
+      {loading ? (
+        <div className="card">
+          Kontakte werden geladen…
+        </div>
+      ) : items.length ? (
+        items.map(item => {
           const incoming =
-            i.recipient_id === userId;
+            item.recipient_id === userId;
 
           const other = incoming
-            ? i.requester
-            : i.recipient;
+            ? item.requester
+            : item.recipient;
 
           const otherId = incoming
-            ? i.requester_id
-            : i.recipient_id;
+            ? item.requester_id
+            : item.recipient_id;
 
-          const d =
+          const details =
             sharedDetails[otherId];
 
           const bothShared =
-            myShare &&
-            d?.share_contacts === true &&
-            (d?.email || d?.phone);
+            myShare === true &&
+            details?.share_contacts === true;
 
           return (
             <div
               className="card row"
-              key={i.id}
+              key={item.id}
             >
               <div>
                 <b>
@@ -1463,21 +1406,109 @@ function Chat({
                 </b>
 
                 <div className="muted">
-                  {i.workshop_id
+                  {item.workshop_id
                     ? "Workshop-Kontakt"
-                    : "Kontaktanfrage"}{" "}
-                  · Status: {i.status}
+                    : "Kontaktanfrage"}
+                  {" · "}
+                  Status: {item.status}
                 </div>
 
-                {i.status ===
+                {item.status ===
                   "accepted" &&
                   (bothShared ? (
                     <div className="notice success">
                       📞{" "}
-                      {d.phone || "–"}{" "}
-                      · ✉️{" "}
-                      {d.email || "–"}
+                      {details.phone ||
+                        "Keine Telefonnummer"}
+                      {" · "}
+                      ✉️{" "}
+                      {details.email ||
+                        "Keine E-Mail-Adresse"}
                     </div>
                   ) : (
                     <div className="muted">
-                      🔐 Kontaktd
+                      🔐 Kontaktdaten werden sichtbar,
+                      sobald ihr beide freigegeben habt.
+                    </div>
+                  ))}
+              </div>
+
+              <div className="actions">
+                {incoming &&
+                  item.status ===
+                    "pending" && (
+                    <button
+                      className="primary"
+                      onClick={() =>
+                        accept(item.id)
+                      }
+                    >
+                      Annehmen
+                    </button>
+                  )}
+
+                {item.status ===
+                  "accepted" && (
+                  <>
+                    <button
+                      className="primary"
+                      onClick={() =>
+                        setChat(item)
+                      }
+                    >
+                      💬 Chat öffnen
+                    </button>
+                    <button
+                      className="ghost"
+                      onClick={() =>
+                        setReportTarget({
+                          id: otherId,
+                          name: other?.display_name
+                        })
+                      }
+                    >
+                      🚨 Melden
+                    </button>
+                  </>
+                )}
+
+                {incoming &&
+                  item.status ===
+                    "pending" && (
+                    <button
+                      className="ghost"
+                      onClick={async () => {
+                        await supabase
+                          .from(
+                            "contact_requests"
+                          )
+                          .update({
+                            status: "declined"
+                          })
+                          .eq(
+                            "id",
+                            item.id
+                          );
+
+                        await load();
+                      }}
+                    >
+                      Ablehnen
+                    </button>
+                  )}
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        <div className="card">
+          Noch keine Kontaktanfragen.
+        </div>
+      )}
+    </section>
+  );
+}
+
+createRoot(document.getElementById("root")).render(
+  <App />
+);
