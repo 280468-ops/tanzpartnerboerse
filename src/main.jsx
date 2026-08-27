@@ -10,25 +10,36 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [resetMode, setResetMode] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setLoading(false);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (event, s) => {
+        setSession(s);
+
+        if (event === "PASSWORD_RECOVERY") {
+          setResetMode(true);
+        }
+      }
+    );
+
     return () => listener.subscription.unsubscribe();
   }, []);
 
   if (loading) {
-    return <div className="center"><div className="card">Lade Tanzpartnerbörse…</div></div>;
+    return <div className="center">Laden...</div>;
+  }
+
+  if (resetMode) {
+    return <ResetPassword onDone={() => setResetMode(false)} />;
   }
 
   return session ? <Dashboard session={session} /> : <Auth />;
-}
-
 function Auth() {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
