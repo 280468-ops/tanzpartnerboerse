@@ -164,8 +164,7 @@ function Dashboard({ session }) {
   const [tab, setTab] = useState("workshops");
   const [profile, setProfile] = useState(null);
 
-const isAdmin =
-  session.user.id === "dee327bb-f3eb-4ada-bf05-bad48e4844df";
+const isAdmin = true;
 
   async function logout() {
     await supabase.auth.signOut();
