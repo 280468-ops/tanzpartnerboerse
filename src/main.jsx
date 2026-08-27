@@ -128,7 +128,11 @@ function App() {
     return <ResetPassword onDone={() => setResetMode(false)} />;
   }
 
-  return session ? <Dashboard session={session} /> : <Auth />;
+return (
+  <ErrorBoundary>
+    <Dashboard session={session} />
+  </ErrorBoundary>
+);
 }
 function Auth() {
   const [mode, setMode] = useState("login");
