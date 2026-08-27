@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { createClient } from "@supabase/supabase-js";
 import "./styles.css";
@@ -16,13 +16,24 @@ function App() {
       setSession(data.session);
       setLoading(false);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+      }
+    );
+
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  if (loading) return <div className="center"><div className="card">Lade Tanzpartnerbörse…</div></div>;
+  if (loading) {
+    return (
+      <div className="center">
+        <div className="card">Lade Tanzpartnerbörse…</div>
+      </div>
+    );
+  }
+
   return session ? <Dashboard session={session} /> : <Auth />;
 }
 
@@ -36,46 +47,116 @@ function Auth() {
 
   async function submit(e) {
     e.preventDefault();
-    setBusy(true); setMessage("");
+    setBusy(true);
+    setMessage("");
+
     try {
       if (mode === "register") {
-        if (!displayName.trim()) throw new Error("Bitte einen Anzeigenamen eingeben.");
+        if (!displayName.trim()) {
+          throw new Error("Bitte einen Anzeigenamen eingeben.");
+        }
+
         const { error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
-          options: { data: { display_name: displayName.trim() } }
+          options: {
+            data: {
+              display_name: displayName.trim()
+            }
+          }
         });
+
         if (error) throw error;
-        setMessage("Registrierung erfolgreich. Falls E-Mail-Bestätigung aktiviert ist, prüfe bitte dein Postfach.");
+
+        setMessage(
+          "Registrierung erfolgreich. Falls E-Mail-Bestätigung aktiviert ist, prüfe bitte dein Postfach."
+        );
       } else {
         const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(), password
+          email: email.trim(),
+          password
         });
+
         if (error) throw error;
       }
     } catch (err) {
       setMessage(err.message || "Es ist ein Fehler aufgetreten.");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <div className="auth-shell">
       <div className="auth-card">
         <div className="logo">💃🕺</div>
+
         <h1>Tanzpartnerbörse</h1>
-        <p className="muted">Finde Menschen, die deine Leidenschaft fürs Tanzen teilen.</p>
+
+        <p className="muted">
+          Finde Menschen, die deine Leidenschaft fürs Tanzen teilen.
+        </p>
+
         <div className="tabs">
-          <button className={mode==="login"?"active":""} onClick={()=>setMode("login")}>Anmelden</button>
-          <button className={mode==="register"?"active":""} onClick={()=>setMode("register")}>Registrieren</button>
+          <button
+            className={mode === "login" ? "active" : ""}
+            onClick={() => setMode("login")}
+          >
+            Anmelden
+          </button>
+
+          <button
+            className={mode === "register" ? "active" : ""}
+            onClick={() => setMode("register")}
+          >
+            Registrieren
+          </button>
         </div>
+
         <form onSubmit={submit}>
           {mode === "register" && (
-            <label>Anzeigename<input value={displayName} onChange={e=>setDisplayName(e.target.value)} placeholder="z. B. Alex" /></label>
+            <label>
+              Anzeigename
+              <input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="z. B. Alex"
+              />
+            </label>
           )}
-          <label>E-Mail<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@beispiel.de" required /></label>
-          <label>Passwort<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mindestens 6 Zeichen" required minLength="6" /></label>
-          <button className="primary wide" disabled={busy}>{busy ? "Bitte warten…" : mode==="login" ? "Anmelden" : "Konto erstellen"}</button>
+
+          <label>
+            E-Mail
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@beispiel.de"
+              required
+            />
+          </label>
+
+          <label>
+            Passwort
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Mindestens 6 Zeichen"
+              required
+              minLength="6"
+            />
+          </label>
+
+          <button className="primary wide" disabled={busy}>
+            {busy
+              ? "Bitte warten…"
+              : mode === "login"
+              ? "Anmelden"
+              : "Konto erstellen"}
+          </button>
         </form>
+
         {message && <div className="notice">{message}</div>}
       </div>
     </div>
@@ -86,11 +167,17 @@ function Dashboard({ session }) {
   const [tab, setTab] = useState("workshops");
   const [profile, setProfile] = useState(null);
 
-  async function logout() { await supabase.auth.signOut(); }
+  async function logout() {
+    await supabase.auth.signOut();
+  }
 
   useEffect(() => {
-    supabase.from("profiles").select("*").eq("id", session.user.id).single()
-      .then(({data}) => setProfile(data));
+    supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", session.user.id)
+      .single()
+      .then(({ data }) => setProfile(data));
   }, [session.user.id]);
 
   return (
@@ -98,23 +185,70 @@ function Dashboard({ session }) {
       <header>
         <div>
           <div className="brand">💃🕺 Tanzpartnerbörse</div>
-          <div className="small">Hallo {profile?.display_name || "Tanzfreund"}!</div>
+          <div className="small">
+            Hallo {profile?.display_name || "Tanzfreund"}!
+          </div>
         </div>
-        <button className="ghost" onClick={logout}>Abmelden</button>
+
+        <button className="ghost" onClick={logout}>
+          Abmelden
+        </button>
       </header>
 
       <main>
-        {tab==="workshops" && <Workshops currentUser={session.user.id} />}
-        {tab==="profil" && <ProfileEditor user={session.user} profile={profile} setProfile={setProfile} />}
-        {tab==="favoriten" && <Favorites userId={session.user.id} />}
-        {tab==="kontakte" && <Contacts userId={session.user.id} />}
+        {tab === "workshops" && (
+          <Workshops currentUser={session.user.id} />
+        )}
+
+        {tab === "profil" && (
+          <ProfileEditor
+            user={session.user}
+            profile={profile}
+            setProfile={setProfile}
+          />
+        )}
+
+        {tab === "favoriten" && (
+          <Favorites userId={session.user.id} />
+        )}
+
+        {tab === "kontakte" && (
+          <Contacts userId={session.user.id} />
+        )}
       </main>
 
       <nav>
-        <button className={tab==="workshops"?"selected":""} onClick={()=>setTab("workshops")}>🎟️<span>Workshops</span></button>
-        <button className={tab==="favoriten"?"selected":""} onClick={()=>setTab("favoriten")}>❤️<span>Favoriten</span></button>
-        <button className={tab==="kontakte"?"selected":""} onClick={()=>setTab("kontakte")}>💬<span>Kontakte</span></button>
-        <button className={tab==="profil"?"selected":""} onClick={()=>setTab("profil")}>👤<span>Profil</span></button>
+        <button
+          className={tab === "workshops" ? "selected" : ""}
+          onClick={() => setTab("workshops")}
+        >
+          🎟️
+          <span>Workshops</span>
+        </button>
+
+        <button
+          className={tab === "favoriten" ? "selected" : ""}
+          onClick={() => setTab("favoriten")}
+        >
+          ❤️
+          <span>Favoriten</span>
+        </button>
+
+        <button
+          className={tab === "kontakte" ? "selected" : ""}
+          onClick={() => setTab("kontakte")}
+        >
+          💬
+          <span>Kontakte</span>
+        </button>
+
+        <button
+          className={tab === "profil" ? "selected" : ""}
+          onClick={() => setTab("profil")}
+        >
+          👤
+          <span>Profil</span>
+        </button>
       </nav>
     </div>
   );
@@ -130,338 +264,205 @@ function Workshops({ currentUser }) {
 
   async function load() {
     setBusy(true);
-    const [{ data: ws, error: wsError }, { data: interests }, { data: pairs }] = await Promise.all([
-      supabase.from("workshops").select("id,title,starts_at,location,booking_url,dance_styles(name)").order("starts_at"),
-      supabase.from("workshop_interests").select("workshop_id").eq("user_id", currentUser),
-      supabase.from("workshop_pairs").select("workshop_id,user1_id,user2_id").or(`user1_id.eq.${currentUser},user2_id.eq.${currentUser}`)
+
+    const [
+      { data: ws, error: wsError },
+      { data: interests },
+      { data: pairs }
+    ] = await Promise.all([
+      supabase
+        .from("workshops")
+        .select(
+          "id,title,starts_at,location,booking_url,dance_styles(name)"
+        )
+        .order("starts_at"),
+
+      supabase
+        .from("workshop_interests")
+        .select("workshop_id")
+        .eq("user_id", currentUser),
+
+      supabase
+        .from("workshop_pairs")
+        .select("workshop_id,user1_id,user2_id")
+        .or(
+          `user1_id.eq.${currentUser},user2_id.eq.${currentUser}`
+        )
     ]);
+
     if (wsError) alert(wsError.message);
+
     setWorkshops(ws || []);
-    setMyInterests(new Set((interests || []).map(x => x.workshop_id)));
-    setMyPairs(new Set((pairs || []).map(x => x.workshop_id)));
+
+    setMyInterests(
+      new Set((interests || []).map((x) => x.workshop_id))
+    );
+
+    setMyPairs(
+      new Set((pairs || []).map((x) => x.workshop_id))
+    );
 
     const map = {};
-    for (const w of (ws || [])) {
+
+    for (const w of ws || []) {
       const [{ data: wi }, { data: wp }] = await Promise.all([
-        supabase.from("workshop_interests").select("user_id,level,profiles(id,display_name,age,gender,height_cm,avatar_url,is_visible,is_blocked)").eq("workshop_id", w.id),
-        supabase.from("workshop_pairs").select("user1_id,user2_id").eq("workshop_id", w.id)
+        supabase
+          .from("workshop_interests")
+          .select(
+            "user_id,level,profiles(id,display_name,age,gender,height_cm,avatar_url,is_visible,is_blocked)"
+          )
+          .eq("workshop_id", w.id),
+
+        supabase
+          .from("workshop_pairs")
+          .select("user1_id,user2_id")
+          .eq("workshop_id", w.id)
       ]);
-      const paired = new Set((wp || []).flatMap(p => [p.user1_id, p.user2_id]));
-      map[w.id] = (wi || []).filter(x => x.user_id !== currentUser && !paired.has(x.user_id) && x.profiles?.is_visible !== false && x.profiles?.is_blocked !== true).map(x => ({ ...x.profiles, workshop_level: x.level })).filter(Boolean);
+
+      const paired = new Set(
+        (wp || []).flatMap((p) => [p.user1_id, p.user2_id])
+      );
+
+      map[w.id] = (wi || [])
+        .filter(
+          (x) =>
+            x.user_id !== currentUser &&
+            !paired.has(x.user_id) &&
+            x.profiles?.is_visible !== false &&
+            x.profiles?.is_blocked !== true
+        )
+        .map((x) => ({
+          ...x.profiles,
+          workshop_level: x.level
+        }))
+        .filter(Boolean);
     }
+
     setSeekers(map);
     setBusy(false);
   }
 
-  useEffect(() => { load(); }, [currentUser]);
+  useEffect(() => {
+    load();
+  }, [currentUser]);
 
   function formatGermanDateTime(iso) {
     const start = new Date(iso);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
+
     const date = new Intl.DateTimeFormat("de-DE", {
-      timeZone: "Europe/Berlin", weekday: "2-digit", day: "2-digit", month: "2-digit", year: "numeric"
+      timeZone: "Europe/Berlin",
+      weekday: "2-digit",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
     }).format(start);
+
     const time = new Intl.DateTimeFormat("de-DE", {
-      timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit", hour12: false
+      timeZone: "Europe/Berlin",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
     });
-    return { date, time: `${time.format(start)}–${time.format(end)} Uhr` };
+
+    return {
+      date,
+      time: `${time.format(start)}–${time.format(end)} Uhr`
+    };
   }
 
   async function toggleInterest(workshopId) {
     if (myPairs.has(workshopId)) return;
+
     const interested = myInterests.has(workshopId);
+
     if (interested) {
-      const { error } = await supabase.from("workshop_interests")
-        .delete().eq("user_id", currentUser).eq("workshop_id", workshopId);
+      const { error } = await supabase
+        .from("workshop_interests")
+        .delete()
+        .eq("user_id", currentUser)
+        .eq("workshop_id", workshopId);
+
       if (error) return alert(error.message);
-      setMyInterests(prev => { const next = new Set(prev); next.delete(workshopId); return next; });
+
+      setMyInterests((prev) => {
+        const next = new Set(prev);
+        next.delete(workshopId);
+        return next;
+      });
+
       await load();
       return;
     }
+
     const level = selectedLevels[workshopId];
-    if (!level) return alert("Bitte wähle zuerst dein Niveau für diesen Workshop.");
-    const { error } = await supabase.from("workshop_interests")
-      .insert({ user_id: currentUser, workshop_id: workshopId, level });
+
+    if (!level) {
+      return alert(
+        "Bitte wähle zuerst dein Niveau für diesen Workshop."
+      );
+    }
+
+    const { error } = await supabase
+      .from("workshop_interests")
+      .insert({
+        user_id: currentUser,
+        workshop_id: workshopId,
+        level
+      });
+
     if (error) return alert(error.message);
-    setMyInterests(prev => new Set(prev).add(workshopId));
+
+    setMyInterests((prev) =>
+      new Set(prev).add(workshopId)
+    );
+
     await load();
   }
 
   async function contactForWorkshop(workshopId, recipientId) {
     if (myPairs.has(workshopId)) return;
-    const { error } = await supabase.from("contact_requests").insert({
-      requester_id: currentUser, recipient_id: recipientId, workshop_id: workshopId, status: "pending"
-    });
-    if (error) return alert(error.message.includes("duplicate") || error.code === "23505"
-      ? "Für diesen Workshop besteht bereits eine Anfrage."
-      : error.message);
+
+    const { error } = await supabase
+      .from("contact_requests")
+      .insert({
+        requester_id: currentUser,
+        recipient_id: recipientId,
+        workshop_id: workshopId,
+        status: "pending"
+      });
+
+    if (error) {
+      return alert(
+        error.message.includes("duplicate") ||
+          error.code === "23505"
+          ? "Für diesen Workshop besteht bereits eine Anfrage."
+          : error.message
+      );
+    }
+
     alert("Kontaktanfrage für diesen Workshop gesendet 💬");
   }
 
-  return <section>
-    <div className="hero">
-      <h2>Sonntags-Workshops</h2>
-      <p>Finde einen Tanzpartner für genau den Workshop, an dem du teilnehmen möchtest.</p>
-    </div>
-    {busy ? <div className="card">Workshops werden geladen…</div> :
-      workshops.length === 0 ? <div className="card">Noch keine Workshops eingetragen.</div> :
-      <div className="grid">{workshops.map(w => {
-        const dt = formatGermanDateTime(w.starts_at);
-        const interested = myInterests.has(w.id);
-        const paired = myPairs.has(w.id);
-        const openSeekers = seekers[w.id] || [];
-        return <article className="profile-card" key={w.id}>
-          <div className="workshop-date">🎟️ {dt.date}</div>
-          <h3>{w.title}</h3>
-          <div className="muted">💃 {w.dance_styles?.name || w.title}</div>
-          <p>🕓 <b>{dt.time}</b></p>
-          <div className="muted">📍 {w.location || "Hazienda im Sonnenhof Aspach"}</div>
-          {paired ? <div className="notice success">
-            <div>✅ Tanzpartner gefunden</div>
-            <button className="ghost" onClick={async () => {
-              const { data: pair } = await supabase.from("workshop_pairs")
-                .select("user1_id,user2_id")
-                .eq("workshop_id", w.id)
-                .or(`user1_id.eq.${currentUser},user2_id.eq.${currentUser}`)
-                .maybeSingle();
-              if (!pair) return;
-              if (!confirm("Tanzpartnerschaft für diesen Workshop wirklich auflösen?")) return;
-              const { error } = await supabase.from("workshop_pairs")
-                .delete().eq("workshop_id", w.id)
-                .in("user1_id", [pair.user1_id, pair.user2_id]);
-              if (error) return alert(error.message);
-              await supabase.from("contact_requests")
-                .update({ status: "cancelled" })
-                .eq("workshop_id", w.id)
-                .or(`requester_id.eq.${currentUser},recipient_id.eq.${currentUser}`)
-                .eq("status", "accepted");
-              await load();
-            }}>Tanzpartnerschaft auflösen</button>
-          </div> : <>
-            <div className="actions">
-              {!interested && <select value={selectedLevels[w.id] || ""} onChange={e=>setSelectedLevels(prev=>({...prev,[w.id]:e.target.value}))}>
-                <option value="">⭐ Niveau wählen</option>
-                <option value="Anfänger">Anfänger</option>
-                <option value="Mittelstufe">Mittelstufe</option>
-                <option value="Fortgeschritten">Fortgeschritten</option>
-              </select>}
-              <button className={interested ? "primary" : "ghost"} onClick={() => toggleInterest(w.id)}>
-                {interested ? "✓ Tanzpartner gesucht" : "Tanzpartner suchen"}
-              </button>
-              {w.booking_url && <a className="primary" href={w.booking_url} target="_blank" rel="noreferrer">Eventfrog</a>}
-            </div>
-            {openSeekers.length > 0 && <div className="seekers">
-              <h4>👥 Sucht noch einen Tanzpartner</h4>
-              {openSeekers.map(p => <div className="row seeker" key={p.id}>
-                <div><b>{p.display_name}{p.age ? `, ${p.age}` : ""}</b><div className="muted">{[p.gender, p.height_cm ? `${p.height_cm} cm` : null].filter(Boolean).join(" · ")}</div><div className="muted">⭐ {p.workshop_level || "Niveau nicht angegeben"}</div></div>
-                <button className="primary" onClick={() => contactForWorkshop(w.id, p.id)}>Kontakt aufnehmen</button>
-              </div>)}
-            </div>}
-            {interested && openSeekers.length === 0 && <div className="muted">Noch keine weiteren offenen Suchenden für diesen Workshop.</div>}
-          </>}
-        </article>;
-      })}</div>}
-  </section>;
-}
+  return (
+    <section>
+      <div className="hero">
+        <h2>Sonntags-Workshops</h2>
+        <p>
+          Finde einen Tanzpartner für genau den Workshop, an dem du
+          teilnehmen möchtest.
+        </p>
+      </div>
 
-function ProfileEditor({ user, profile, setProfile }) {
-  const [form, setForm] = useState(profile || {});
-  const [contact, setContact] = useState({ email: user.email || "", phone: "", share_contacts: false });
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    setForm(profile || {});
-    supabase.from("contact_details").select("email,phone,share_contacts").eq("user_id", user.id).maybeSingle()
-      .then(({ data }) => setContact(data || { email: user.email || "", phone: "", share_contacts: false }));
-  }, [profile, user.id, user.email]);
-
-  function change(k,v){ setForm(f=>({...f,[k]:v})); }
-  function changeContact(k,v){ setContact(f=>({...f,[k]:v})); }
-
-  async function save(e) {
-    e.preventDefault(); setBusy(true);
-    const payload = {
-      id:user.id,
-      display_name:(form.display_name||"Tanzpartner").trim(),
-      age: form.age ? Number(form.age) : null,
-      gender:form.gender||null,
-      height_cm: form.height_cm ? Number(form.height_cm) : null,
-      is_visible:form.is_visible !== false
-    };
-    const { data, error } = await supabase.from("profiles").upsert(payload).select().single();
-    if (error) { alert(error.message); setBusy(false); return; }
-
-    const { error: contactError } = await supabase.from("contact_details").upsert({
-      user_id: user.id,
-      email: (contact.email || user.email || "").trim() || null,
-      phone: (contact.phone || "").trim() || null,
-      share_contacts: contact.share_contacts === true
-    });
-    if (contactError) { alert(contactError.message); setBusy(false); return; }
-
-    setProfile(data);
-    alert("Profil gespeichert ✅");
-    setBusy(false);
-  }
-
-  return <section>
-    <h2>Mein Profil</h2>
-    <form className="card form" onSubmit={save}>
-      <label>Anzeigename<input value={form.display_name||""} onChange={e=>change("display_name",e.target.value)} required /></label>
-      <label>Alter<input type="number" min="18" max="100" value={form.age||""} onChange={e=>change("age",e.target.value)} /></label>
-      <label>Geschlecht<select value={form.gender||""} onChange={e=>change("gender",e.target.value)}>
-        <option value="">Bitte auswählen</option><option value="Frau">Frau</option><option value="Mann">Mann</option><option value="Divers">Divers</option>
-      </select></label>
-      <label>Größe in cm <span className="small">(optional)</span><input type="number" min="120" max="230" step="1" value={form.height_cm||""} onChange={e=>change("height_cm",e.target.value)} placeholder="z. B. 172" /></label>
-      <hr />
-      <h3>Kontaktdaten</h3>
-      <p className="muted">Diese Daten sind niemals öffentlich. Sie werden erst sichtbar, wenn ihr euch gegenseitig freigebt.</p>
-      <label>E-Mail für den Kontakt <span className="small">(optional)</span><input type="email" value={contact.email||""} onChange={e=>changeContact("email",e.target.value)} placeholder="name@beispiel.de" /></label>
-      <label>Telefon <span className="small">(optional)</span><input type="tel" value={contact.phone||""} onChange={e=>changeContact("phone",e.target.value)} placeholder="z. B. 0170 1234567" /></label>
-      <label className="check"><input type="checkbox" checked={contact.share_contacts === true} onChange={e=>changeContact("share_contacts",e.target.checked)} /> Ich bin bereit, meine Kontaktdaten mit meinem Tanzpartner zu teilen</label>
-      <label className="check"><input type="checkbox" checked={form.is_visible !== false} onChange={e=>change("is_visible",e.target.checked)} /> Profil für andere sichtbar</label>
-      <button className="primary wide" disabled={busy}>{busy?"Speichern…":"Profil speichern"}</button>
-    </form>
-  </section>;
-}
-function Favorites({ userId }) {
-  const [items,setItems]=useState([]);
-  useEffect(()=>{supabase.from("favorites").select("favorite_user_id, profiles:favorite_user_id(id,display_name,age)").eq("user_id",userId).then(({data})=>setItems(data||[]))},[userId]);
-  return <section><h2>Meine Favoriten ❤️</h2>{items.length?<div className="grid">{items.map(x=><article className="profile-card" key={x.favorite_user_id}><div className="avatar">💃</div><h3>{x.profiles?.display_name}{x.profiles?.age?`, ${x.profiles.age}`:""}</h3></article>)}</div>:<div className="card">Noch keine Favoriten.</div>}</section>;
-}
-
-function Chat({ userId, contact, onBack }) {
-  const [messages, setMessages] = useState([]);
-  const [body, setBody] = useState("");
-  const [busy, setBusy] = useState(false);
-  const otherId = contact.requester_id === userId ? contact.recipient_id : contact.requester_id;
-  const otherName = contact.requester_id === userId ? contact.recipient?.display_name : contact.requester?.display_name;
-
-  async function loadMessages() {
-    let q = supabase.from("messages").select("id,sender_id,recipient_id,workshop_id,body,created_at")
-      .or(`and(sender_id.eq.${userId},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${userId})`)
-      .order("created_at", { ascending: true });
-    if (contact.workshop_id) q = q.eq("workshop_id", contact.workshop_id);
-    const { data, error } = await q;
-    if (error) alert(error.message); else setMessages(data || []);
-  }
-
-  useEffect(() => {
-    loadMessages();
-    const channel = supabase.channel(`chat-${contact.id}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, payload => {
-        const m = payload.new;
-        if ((m.sender_id === userId && m.recipient_id === otherId) || (m.sender_id === otherId && m.recipient_id === userId)) {
-          if (!contact.workshop_id || m.workshop_id === contact.workshop_id) setMessages(prev => prev.some(x => x.id === m.id) ? prev : [...prev, m]);
-        }
-      }).subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [contact.id, contact.workshop_id, otherId, userId]);
-
-  async function send(e) {
-    e.preventDefault();
-    const text = body.trim();
-    if (!text || busy) return;
-    setBusy(true);
-    const { data, error } = await supabase.from("messages").insert({
-      sender_id: userId, recipient_id: otherId, workshop_id: contact.workshop_id || null, body: text
-    }).select().single();
-    if (error) alert(error.message); else { setMessages(prev => [...prev, data]); setBody(""); }
-    setBusy(false);
-  }
-
-  return <section>
-    <button className="ghost" onClick={onBack}>← Zurück zu Kontakten</button>
-    <h2>💬 Chat mit {otherName || "Tanzpartner/in"}</h2>
-    {contact.workshop_id && <div className="notice success">👫 Tanzpaar für diesen Workshop gefunden</div>}
-    <div className="card chat-box">
-      {messages.length ? messages.map(m => <div key={m.id} className={`chat-message ${m.sender_id === userId ? "mine" : "theirs"}`}>
-        <div>{m.body}</div><small>{new Intl.DateTimeFormat("de-DE", {hour:"2-digit", minute:"2-digit"}).format(new Date(m.created_at))}</small>
-      </div>) : <div className="muted">Noch keine Nachricht. Schreib einfach „Hallo“ 👋</div>}
-    </div>
-    <form className="chat-form" onSubmit={send}>
-      <input value={body} onChange={e=>setBody(e.target.value)} placeholder="Nachricht schreiben…" maxLength="1000" />
-      <button className="primary" disabled={busy}>{busy ? "…" : "Senden"}</button>
-    </form>
-  </section>;
-}
-
-function Contacts({ userId }) {
-  const [items,setItems]=useState([]);
-  const [chat,setChat]=useState(null);
-  const [myShare,setMyShare]=useState(false);
-  const [sharedDetails,setSharedDetails]=useState({});
-
-  async function load() {
-    const [{ data, error }, { data: mine }] = await Promise.all([
-      supabase.from("contact_requests")
-        .select("*, requester:requester_id(id,display_name), recipient:recipient_id(id,display_name)")
-        .or(`requester_id.eq.${userId},recipient_id.eq.${userId}`)
-        .order("created_at",{ascending:false}),
-      supabase.from("contact_details").select("share_contacts").eq("user_id",userId).maybeSingle()
-    ]);
-    if (error) alert(error.message); else setItems(data || []);
-    setMyShare(mine?.share_contacts === true);
-
-    const accepted = (data || []).filter(i => i.status === "accepted");
-    const details = {};
-    for (const i of accepted) {
-      const otherId = i.requester_id === userId ? i.recipient_id : i.requester_id;
-      const { data: d } = await supabase.from("contact_details").select("email,phone,share_contacts").eq("user_id",otherId).maybeSingle();
-      if (d) details[otherId] = d;
-    }
-    setSharedDetails(details);
-  }
-  useEffect(()=>{ load(); },[userId]);
-
-  async function accept(id){
-    const item = items.find(i => i.id === id);
-    if (!item) return;
-    if (item.workshop_id) {
-      const [a, b] = [item.requester_id, item.recipient_id].sort();
-      const { error: pairError } = await supabase.from("workshop_pairs").insert({ workshop_id:item.workshop_id, user1_id:a, user2_id:b });
-      if (pairError) return alert(pairError.message.includes("duplicate") || pairError.code === "23505" ? "Für diesen Workshop hat bereits jemand einen Tanzpartner gefunden." : pairError.message);
-    }
-    const {error}=await supabase.from("contact_requests").update({status:"accepted"}).eq("id",id);
-    if(error) return alert(error.message);
-    await load();
-  }
-
-  async function setSharing(enabled) {
-    const { error } = await supabase.from("contact_details").upsert({ user_id:userId, share_contacts:enabled });
-    if (error) return alert(error.message);
-    setMyShare(enabled);
-    await load();
-  }
-
-  if (chat) return <Chat userId={userId} contact={chat} onBack={()=>{setChat(null);load();}} />;
-
-  return <section><h2>Kontakte 💬</h2>
-    <div className="card">
-      <b>🔐 Kontaktdaten</b>
-      <p className="muted">Deine Telefonnummer und E-Mail-Adresse werden erst sichtbar, wenn du und dein Tanzpartner sie beide freigegeben habt.</p>
-      {!myShare && <button className="primary" onClick={()=>setSharing(true)}>Kontaktdaten freigeben</button>}
-      {myShare && <div className="notice success">✓ Du hast deine Kontaktdaten freigegeben.</div>}
-    </div>
-    {items.length ? items.map(i => {
-      const incoming = i.recipient_id === userId;
-      const other = incoming ? i.requester : i.recipient;
-      const otherId = incoming ? i.requester_id : i.recipient_id;
-      const d = sharedDetails[otherId];
-      const bothShared = myShare && d?.share_contacts === true && (d?.email || d?.phone);
-      return <div className="card row" key={i.id}>
-        <div>
-          <b>{other?.display_name || "Tanzpartner/in"}</b>
-          <div className="muted">{i.workshop_id ? "Workshop-Kontakt" : "Kontaktanfrage"} · Status: {i.status}</div>
-          {i.status === "accepted" && (bothShared ? <div className="notice success">📞 {d.phone || "–"} · ✉️ {d.email || "–"}</div> : <div className="muted">🔐 Kontaktdaten werden sichtbar, sobald ihr beide freigegeben habt.</div>)}
+      {busy ? (
+        <div className="card">Workshops werden geladen…</div>
+      ) : workshops.length === 0 ? (
+        <div className="card">
+          Noch keine Workshops eingetragen.
         </div>
-        <div className="actions">
-          {incoming && i.status === "pending" && <button className="primary" onClick={()=>accept(i.id)}>Annehmen</button>}
-          {i.status === "accepted" && <button className="primary" onClick={()=>setChat(i)}>💬 Chat öffnen</button>}
-          {incoming && i.status === "pending" && <button className="ghost" onClick={async()=>{await supabase.from("contact_requests").update({status:"declined"}).eq("id",i.id);load();}}>Ablehnen</button>}
-        </div>
-      </div>;
-    }) : <div className="card">Noch keine Kontaktanfragen.</div>}
-  </section>;
-}
-createRoot(document.getElementById("root")).render(<App />);
+      ) : (
+        <div className="grid">
+          {workshops.map((w) => {
+            const dt = formatGermanDateTime(w.starts_at);
+            const interested = myInterests.has(w.id);
+            const paired = myPairs.has(w
