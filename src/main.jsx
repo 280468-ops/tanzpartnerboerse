@@ -6,7 +6,29 @@ import "./styles.css";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
 
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="card" style={{ margin: 20, padding: 20 }}>
+          <h2>⚠️ Fehler in der App</h2>
+          <p>{this.state.error?.message || "Unbekannter Fehler"}</p>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -216,8 +238,10 @@ const isAdmin =
         )}
 
         {tab === "admin" && isAdmin && (
-          <AdminPanel />
-        )}
+  <ErrorBoundary>
+    <AdminPanel />
+  </ErrorBoundary>
+)}
       </main>
 
       <nav>
