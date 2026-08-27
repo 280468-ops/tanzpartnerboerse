@@ -1573,28 +1573,27 @@ function AdminPanel() {
         <article className="profile-card">
           <h3>👥 Nutzerverwaltung</h3>
           <p className="muted">
-            Hier können später Nutzer verwaltet und gesperrt werden.
+            Admin-Bereich funktioniert.
           </p>
         </article>
 
         <article className="profile-card">
           <h3>🎟️ Workshops</h3>
           <p className="muted">
-            Hier können später Workshops verwaltet werden.
+            Workshop-Verwaltung folgt.
           </p>
         </article>
 
         <article className="profile-card">
           <h3>💬 Kontaktanfragen</h3>
           <p className="muted">
-            Hier können später Kontaktanfragen verwaltet werden.
+            Kontaktverwaltung folgt.
           </p>
         </article>
       </div>
     </section>
   );
 }
-
 createRoot(document.getElementById("root")).render(
   <App />
 );
