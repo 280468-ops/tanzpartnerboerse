@@ -15,3 +15,24 @@
 .chat-message small { display:block; margin-top:4px; opacity:.6; font-size:.75rem; }
 .chat-form { display:flex; gap:8px; margin-top:10px; }
 .chat-form input { flex:1; }
+/* Mobile Navigation mit Admin */
+@media (max-width: 700px) {
+  nav {
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  nav button {
+    min-width: 0 !important;
+    width: 100% !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    white-space: nowrap !important;
+  }
+
+  nav button span {
+    font-size: 13px !important;
+  }
+}
