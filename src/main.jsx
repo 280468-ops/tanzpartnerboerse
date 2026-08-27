@@ -9,8 +9,75 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = {
+      hasError: false,
+      error: null,
+      info: null
+    };
   }
+
+  static getDerivedStateFromError(error) {
+    return {
+      hasError: true,
+      error
+    };
+  }
+
+  componentDidCatch(error, info) {
+    console.error("FEHLER IN DER APP:", error);
+    console.error("FEHLER-INFO:", info);
+
+    this.setState({
+      error,
+      info
+    });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          style={{
+            margin: 20,
+            padding: 20,
+            background: "#fff",
+            border: "2px solid red",
+            borderRadius: 12,
+            color: "#222"
+          }}
+        >
+          <h2>⚠️ Fehler in der App</h2>
+
+          <p>
+            <strong>
+              {this.state.error?.message || "Unbekannter Fehler"}
+            </strong>
+          </p>
+
+          <details>
+            <summary>Technische Details anzeigen</summary>
+
+            <pre
+              style={{
+                whiteSpace: "pre-wrap",
+                fontSize: 12,
+                marginTop: 15
+              }}
+            >
+              {this.state.error?.stack || "Kein Stack verfügbar"}
+
+              {"\n\n"}
+
+              {this.state.info?.componentStack || ""}
+            </pre>
+          </details>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
   static getDerivedStateFromError(error) {
     return { hasError: true, error };
