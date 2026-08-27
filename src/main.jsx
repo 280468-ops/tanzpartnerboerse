@@ -1682,11 +1682,13 @@ function AdminPanel() {
                 {w.location || "Hazienda im Sonnenhof Aspach"}
               </div>
               <div className="muted">
-                {new Intl.DateTimeFormat("de-DE", {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                  timeZone: "Europe/Berlin"
-                }).format(new Date(w.starts_at))}
+   {w.starts_at
+  ? new Date(w.starts_at).toLocaleString("de-DE", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "Europe/Berlin"
+    })
+  : "Termin noch nicht festgelegt"}
               </div>
             </div>
           </div>
