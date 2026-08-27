@@ -165,7 +165,7 @@ function Dashboard({ session }) {
   const [profile, setProfile] = useState(null);
 
   const isAdmin =
-    (session.user.email || "").toLowerCase() === "mydiscofox@gmx.de";
+  (session.user.email || "").trim().toLowerCase() === "mydiscofox@gmx.de";
 
   async function logout() {
     await supabase.auth.signOut();
