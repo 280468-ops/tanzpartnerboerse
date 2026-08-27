@@ -17,11 +17,10 @@ function App() {
       setLoading(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-      }
-    );
+    const { data: listener } =
+      supabase.auth.onAuthStateChange((_event, s) => {
+        setSession(s);
+      });
 
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -72,15 +71,18 @@ function Auth() {
           "Registrierung erfolgreich. Falls E-Mail-Bestätigung aktiviert ist, prüfe bitte dein Postfach."
         );
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password
-        });
+        const { error } =
+          await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password
+          });
 
         if (error) throw error;
       }
     } catch (err) {
-      setMessage(err.message || "Es ist ein Fehler aufgetreten.");
+      setMessage(
+        err.message || "Es ist ein Fehler aufgetreten."
+      );
     } finally {
       setBusy(false);
     }
@@ -90,7 +92,6 @@ function Auth() {
     <div className="auth-shell">
       <div className="auth-card">
         <div className="logo">💃🕺</div>
-
         <h1>Tanzpartnerbörse</h1>
 
         <p className="muted">
@@ -119,7 +120,9 @@ function Auth() {
               Anzeigename
               <input
                 value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                onChange={(e) =>
+                  setDisplayName(e.target.value)
+                }
                 placeholder="z. B. Alex"
               />
             </label>
@@ -130,7 +133,9 @@ function Auth() {
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
               placeholder="name@beispiel.de"
               required
             />
@@ -141,14 +146,19 @@ function Auth() {
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) =>
+                setPassword(e.target.value)
+              }
               placeholder="Mindestens 6 Zeichen"
               required
               minLength="6"
             />
           </label>
 
-          <button className="primary wide" disabled={busy}>
+          <button
+            className="primary wide"
+            disabled={busy}
+          >
             {busy
               ? "Bitte warten…"
               : mode === "login"
@@ -157,7 +167,9 @@ function Auth() {
           </button>
         </form>
 
-        {message && <div className="notice">{message}</div>}
+        {message && (
+          <div className="notice">{message}</div>
+        )}
       </div>
     </div>
   );
@@ -166,6 +178,8 @@ function Auth() {
 function Dashboard({ session }) {
   const [tab, setTab] = useState("workshops");
   const [profile, setProfile] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notification, setNotification] = useState(null);
 
   async function logout() {
     await supabase.auth.signOut();
@@ -180,24 +194,157 @@ function Dashboard({ session }) {
       .then(({ data }) => setProfile(data));
   }, [session.user.id]);
 
+  useEffect(() => {
+    const userId = session.user.id;
+    const key = `tpb_last_read_${userId}`;
+
+    async function loadUnread() {
+      const lastRead = localStorage.getItem(key);
+
+      let query = supabase
+        .from("messages")
+        .select(
+          "id,sender_id,recipient_id,body,created_at"
+        )
+        .eq("recipient_id", userId)
+        .order("created_at", {
+          ascending: true
+        });
+
+      if (lastRead) {
+        query = query.gt(
+          "created_at",
+          lastRead
+        );
+      }
+
+      const { data, error } = await query;
+
+      if (!error) {
+        setUnreadCount(
+          (data || []).length
+        );
+      }
+    }
+
+    loadUnread();
+
+    const channel = supabase
+      .channel(`notifications-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `recipient_id=eq.${userId}`
+        },
+        async (payload) => {
+          const message = payload.new;
+
+          setUnreadCount(
+            (count) => count + 1
+          );
+
+          const { data: sender } =
+            await supabase
+              .from("profiles")
+              .select("display_name")
+              .eq(
+                "id",
+                message.sender_id
+              )
+              .maybeSingle();
+
+          setNotification({
+            name:
+              sender?.display_name ||
+              "Tanzpartner/in",
+            body:
+              message.body ||
+              "Neue Nachricht"
+          });
+
+          setTimeout(() => {
+            setNotification(null);
+          }, 5000);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session.user.id]);
+
   return (
     <div className="app">
+      {notification && (
+        <button
+          className="notice success"
+          style={{
+            position: "fixed",
+            top: "80px",
+            left: "16px",
+            right: "16px",
+            zIndex: 1000,
+            textAlign: "left",
+            cursor: "pointer",
+            border: "none"
+          }}
+          onClick={() => {
+            setNotification(null);
+            setTab("kontakte");
+          }}
+        >
+          💬{" "}
+          <b>
+            Neue Nachricht von{" "}
+            {notification.name}
+          </b>
+
+          <br />
+
+          <span className="small">
+            {notification.body}
+          </span>
+
+          <br />
+
+          <span className="small">
+            Tippen zum Öffnen
+          </span>
+        </button>
+      )}
+
       <header>
         <div>
-          <div className="brand">💃🕺 Tanzpartnerbörse</div>
+          <div className="brand">
+            💃🕺 Tanzpartnerbörse
+          </div>
+
           <div className="small">
-            Hallo {profile?.display_name || "Tanzfreund"}!
+            Hallo{" "}
+            {profile?.display_name ||
+              "Tanzfreund"}!
           </div>
         </div>
 
-        <button className="ghost" onClick={logout}>
+        <button
+          className="ghost"
+          onClick={logout}
+        >
           Abmelden
         </button>
       </header>
 
       <main>
         {tab === "workshops" && (
-          <Workshops currentUser={session.user.id} />
+          <Workshops
+            currentUser={
+              session.user.id
+            }
+          />
         )}
 
         {tab === "profil" && (
@@ -209,42 +356,102 @@ function Dashboard({ session }) {
         )}
 
         {tab === "favoriten" && (
-          <Favorites userId={session.user.id} />
+          <Favorites
+            userId={session.user.id}
+          />
         )}
 
         {tab === "kontakte" && (
-          <Contacts userId={session.user.id} />
+          <Contacts
+            userId={session.user.id}
+            unreadCount={unreadCount}
+            setUnreadCount={
+              setUnreadCount
+            }
+          />
         )}
       </main>
 
       <nav>
         <button
-          className={tab === "workshops" ? "selected" : ""}
-          onClick={() => setTab("workshops")}
+          className={
+            tab === "workshops"
+              ? "selected"
+              : ""
+          }
+          onClick={() =>
+            setTab("workshops")
+          }
         >
           🎟️
           <span>Workshops</span>
         </button>
 
         <button
-          className={tab === "favoriten" ? "selected" : ""}
-          onClick={() => setTab("favoriten")}
+          className={
+            tab === "favoriten"
+              ? "selected"
+              : ""
+          }
+          onClick={() =>
+            setTab("favoriten")
+          }
         >
           ❤️
           <span>Favoriten</span>
         </button>
 
         <button
-          className={tab === "kontakte" ? "selected" : ""}
-          onClick={() => setTab("kontakte")}
+          className={
+            tab === "kontakte"
+              ? "selected"
+              : ""
+          }
+          onClick={() =>
+            setTab("kontakte")
+          }
+          style={{
+            position: "relative"
+          }}
         >
           💬
           <span>Kontakte</span>
+
+          {unreadCount > 0 && (
+            <span
+              style={{
+                position: "absolute",
+                top: "0",
+                right: "8px",
+                minWidth: "22px",
+                height: "22px",
+                padding: "0 5px",
+                borderRadius: "999px",
+                background: "#e53935",
+                color: "#fff",
+                fontSize: "13px",
+                fontWeight: "700",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}
+            >
+              {unreadCount > 99
+                ? "99+"
+                : unreadCount}
+            </span>
+          )}
         </button>
 
         <button
-          className={tab === "profil" ? "selected" : ""}
-          onClick={() => setTab("profil")}
+          className={
+            tab === "profil"
+              ? "selected"
+              : ""
+          }
+          onClick={() =>
+            setTab("profil")
+          }
         >
           👤
           <span>Profil</span>
@@ -252,8 +459,7 @@ function Dashboard({ session }) {
       </nav>
     </div>
   );
-}
-
+      }
 function Workshops({ currentUser }) {
   const [workshops, setWorkshops] = useState([]);
   const [myInterests, setMyInterests] = useState(new Set());
@@ -295,11 +501,11 @@ function Workshops({ currentUser }) {
     setWorkshops(ws || []);
 
     setMyInterests(
-      new Set((interests || []).map((x) => x.workshop_id))
+      new Set((interests || []).map(x => x.workshop_id))
     );
 
     setMyPairs(
-      new Set((pairs || []).map((x) => x.workshop_id))
+      new Set((pairs || []).map(x => x.workshop_id))
     );
 
     const map = {};
@@ -320,18 +526,21 @@ function Workshops({ currentUser }) {
       ]);
 
       const paired = new Set(
-        (wp || []).flatMap((p) => [p.user1_id, p.user2_id])
+        (wp || []).flatMap(p => [
+          p.user1_id,
+          p.user2_id
+        ])
       );
 
       map[w.id] = (wi || [])
         .filter(
-          (x) =>
+          x =>
             x.user_id !== currentUser &&
             !paired.has(x.user_id) &&
             x.profiles?.is_visible !== false &&
             x.profiles?.is_blocked !== true
         )
-        .map((x) => ({
+        .map(x => ({
           ...x.profiles,
           workshop_level: x.level
         }))
@@ -348,7 +557,9 @@ function Workshops({ currentUser }) {
 
   function formatGermanDateTime(iso) {
     const start = new Date(iso);
-    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    const end = new Date(
+      start.getTime() + 60 * 60 * 1000
+    );
 
     const date = new Intl.DateTimeFormat("de-DE", {
       timeZone: "Europe/Berlin",
@@ -385,7 +596,7 @@ function Workshops({ currentUser }) {
 
       if (error) return alert(error.message);
 
-      setMyInterests((prev) => {
+      setMyInterests(prev => {
         const next = new Set(prev);
         next.delete(workshopId);
         return next;
@@ -413,56 +624,860 @@ function Workshops({ currentUser }) {
 
     if (error) return alert(error.message);
 
-    setMyInterests((prev) =>
-      new Set(prev).add(workshopId)
+    setMyInterests(
+      prev => new Set(prev).add(workshopId)
     );
 
     await load();
   }
 
-  async function contactForWorkshop(workshopId, recipientId) {
+  async function contactForWorkshop(
+    workshopId,
+    recipientId
+  ) {
     if (myPairs.has(workshopId)) return;
 
     const { error } = await supabase
       .from("contact_requests")
       .insert({
-        requester_id: currentUser,
-        recipient_id: recipientId,
-        workshop_id: workshopId,
-        status: "pending"
+       function ProfileEditor({ user, profile, setProfile }) {
+  const [form, setForm] = useState(profile || {});
+  const [contact, setContact] = useState({
+    email: user.email || "",
+    phone: "",
+    share_contacts: false
+  });
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setForm(profile || {});
+
+    supabase
+      .from("contact_details")
+      .select("email,phone,share_contacts")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setContact(
+          data || {
+            email: user.email || "",
+            phone: "",
+            share_contacts: false
+          }
+        );
       });
+  }, [profile, user.id, user.email]);
+
+  function change(k, v) {
+    setForm(f => ({ ...f, [k]: v }));
+  }
+
+  function changeContact(k, v) {
+    setContact(f => ({ ...f, [k]: v }));
+  }
+
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true);
+
+    const payload = {
+      id: user.id,
+      display_name:
+        (form.display_name || "Tanzpartner").trim(),
+      age: form.age ? Number(form.age) : null,
+      gender: form.gender || null,
+      height_cm: form.height_cm
+        ? Number(form.height_cm)
+        : null,
+      is_visible: form.is_visible !== false
+    };
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .upsert(payload)
+      .select()
+      .single();
 
     if (error) {
-      return alert(
-        error.message.includes("duplicate") ||
-          error.code === "23505"
-          ? "Für diesen Workshop besteht bereits eine Anfrage."
-          : error.message
-      );
+      alert(error.message);
+      setBusy(false);
+      return;
     }
 
-    alert("Kontaktanfrage für diesen Workshop gesendet 💬");
+    const { error: contactError } =
+      await supabase
+        .from("contact_details")
+        .upsert({
+          user_id: user.id,
+          email:
+            (contact.email || user.email || "").trim() ||
+            null,
+          phone:
+            (contact.phone || "").trim() || null,
+          share_contacts:
+            contact.share_contacts === true
+        });
+
+    if (contactError) {
+      alert(contactError.message);
+      setBusy(false);
+      return;
+    }
+
+    setProfile(data);
+    alert("Profil gespeichert ✅");
+    setBusy(false);
   }
 
   return (
     <section>
-      <div className="hero">
-        <h2>Sonntags-Workshops</h2>
-        <p>
-          Finde einen Tanzpartner für genau den Workshop, an dem du
-          teilnehmen möchtest.
-        </p>
-      </div>
+      <h2>Mein Profil</h2>
 
-      {busy ? (
-        <div className="card">Workshops werden geladen…</div>
-      ) : workshops.length === 0 ? (
-        <div className="card">
-          Noch keine Workshops eingetragen.
+      <form
+        className="card form"
+        onSubmit={save}
+      >
+        <label>
+          Anzeigename
+          <input
+            value={form.display_name || ""}
+            onChange={e =>
+              change(
+                "display_name",
+                e.target.value
+              )
+            }
+            required
+          />
+        </label>
+
+        <label>
+          Alter
+          <input
+            type="number"
+            min="18"
+            max="100"
+            value={form.age || ""}
+            onChange={e =>
+              change("age", e.target.value)
+            }
+          />
+        </label>
+
+        <label>
+          Geschlecht
+          <select
+            value={form.gender || ""}
+            onChange={e =>
+              change(
+                "gender",
+                e.target.value
+              )
+            }
+          >
+            <option value="">
+              Bitte auswählen
+            </option>
+
+            <option value="Frau">
+              Frau
+            </option>
+
+            <option value="Mann">
+              Mann
+            </option>
+
+            <option value="Divers">
+              Divers
+            </option>
+          </select>
+        </label>
+
+        <label>
+          Größe in cm{" "}
+          <span className="small">
+            (optional)
+          </span>
+
+          <input
+            type="number"
+            min="120"
+            max="230"
+            step="1"
+            value={form.height_cm || ""}
+            onChange={e =>
+              change(
+                "height_cm",
+                e.target.value
+              )
+            }
+            placeholder="z. B. 172"
+          />
+        </label>
+
+        <hr />
+
+        <h3>Kontaktdaten</h3>
+
+        <p className="muted">
+          Diese Daten sind niemals öffentlich.
+          Sie werden erst sichtbar, wenn ihr euch
+          gegenseitig freigebt.
+        </p>
+
+        <label>
+          E-Mail für den Kontakt{" "}
+          <span className="small">
+            (optional)
+          </span>
+
+          <input
+            type="email"
+            value={contact.email || ""}
+            onChange={e =>
+              changeContact(
+                "email",
+                e.target.value
+              )
+            }
+            placeholder="name@beispiel.de"
+          />
+        </label>
+
+        <label>
+          Telefon{" "}
+          <span className="small">
+            (optional)
+          </span>
+
+          <input
+            type="tel"
+            value={contact.phone || ""}
+            onChange={e =>
+              changeContact(
+                "phone",
+                e.target.value
+              )
+            }
+            placeholder="z. B. 0170 1234567"
+          />
+        </label>
+
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={
+              contact.share_contacts === true
+            }
+            onChange={e =>
+              changeContact(
+                "share_contacts",
+                e.target.checked
+              )
+            }
+          />
+
+          Ich bin bereit, meine Kontaktdaten
+          mit meinem Tanzpartner zu teilen
+        </label>
+
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={
+              form.is_visible !== false
+            }
+            onChange={e =>
+              change(
+                "is_visible",
+                e.target.checked
+              )
+            }
+          />
+
+          Profil für andere sichtbar
+        </label>
+
+        <button
+          className="primary wide"
+          disabled={busy}
+        >
+          {busy
+            ? "Speichern…"
+            : "Profil speichern"}
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function Favorites({ userId }) {
+  const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    supabase
+      .from("favorites")
+      .select(
+        "favorite_user_id, profiles:favorite_user_id(id,display_name,age)"
+      )
+      .eq("user_id", userId)
+      .then(({ data }) =>
+        setItems(data || [])
+      );
+  }, [userId]);
+
+  return (
+    <section>
+      <h2>Meine Favoriten ❤️</h2>
+
+      {items.length ? (
+        <div className="grid">
+          {items.map(x => (
+            <article
+              className="profile-card"
+              key={x.favorite_user_id}
+            >
+              <div className="avatar">
+                💃
+              </div>
+
+              <h3>
+                {x.profiles?.display_name}
+                {x.profiles?.age
+                  ? `, ${x.profiles.age}`
+                  : ""}
+              </h3>
+            </article>
+          ))}
         </div>
       ) : (
-        <div className="grid">
-          {workshops.map((w) => {
-            const dt = formatGermanDateTime(w.starts_at);
-            const interested = myInterests.has(w.id);
-            const paired = myPairs.has(w
+        <div className="card">
+          Noch keine Favoriten.
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Chat({
+  userId,
+  contact,
+  onBack,
+  onRead
+}) {
+  const [messages, setMessages] = useState([]);
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const otherId =
+    contact.requester_id === userId
+      ? contact.recipient_id
+      : contact.requester_id;
+
+  const otherName =
+    contact.requester_id === userId
+      ? contact.recipient?.display_name
+      : contact.requester?.display_name;
+
+  useEffect(() => {
+    localStorage.setItem(
+      `tpb_last_read_${userId}`,
+      new Date().toISOString()
+    );
+
+    onRead?.();
+
+    loadMessages();
+
+    const channel = supabase
+      .channel(`chat-${contact.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages"
+        },
+        payload => {
+          const m = payload.new;
+
+          const sameConversation =
+            (m.sender_id === userId &&
+              m.recipient_id === otherId) ||
+            (m.sender_id === otherId &&
+              m.recipient_id === userId);
+
+          const sameWorkshop =
+            !contact.workshop_id ||
+            m.workshop_id ===
+              contact.workshop_id;
+
+          if (
+            sameConversation &&
+            sameWorkshop
+          ) {
+            setMessages(prev =>
+              prev.some(
+                x => x.id === m.id
+              )
+                ? prev
+                : [...prev, m]
+            );
+
+            if (
+              m.recipient_id === userId
+            ) {
+              localStorage.setItem(
+                `tpb_last_read_${userId}`,
+                new Date().toISOString()
+              );
+
+              onRead?.();
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [
+    contact.id,
+    contact.workshop_id,
+    otherId,
+    userId
+  ]);
+
+  async function loadMessages() {
+    let q = supabase
+      .from("messages")
+      .select(
+        "id,sender_id,recipient_id,workshop_id,body,created_at"
+      )
+      .or(
+        `and(sender_id.eq.${userId},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${userId})`
+      )
+      .order("created_at", {
+        ascending: true
+      });
+
+    if (contact.workshop_id) {
+      q = q.eq(
+        "workshop_id",
+        contact.workshop_id
+      );
+    }
+
+    const { data, error } =
+      await q;
+
+    if (error) {
+      alert(error.message);
+    } else {
+      setMessages(data || []);
+    }
+  }
+
+  async function send(e) {
+    e.preventDefault();
+
+    const text = body.trim();
+
+    if (!text || busy) return;
+
+    setBusy(true);
+
+    const { data, error } =
+      await supabase
+        .from("messages")
+        .insert({
+          sender_id: userId,
+          recipient_id: otherId,
+          workshop_id:
+            contact.workshop_id ||
+            null,
+          body: text
+        })
+        .select()
+        .single();
+
+    if (error) {
+      alert(error.message);
+    } else {
+      setMessages(prev =>
+        prev.some(
+          x => x.id === data.id
+        )
+          ? prev
+          : [...prev, data]
+      );
+
+      setBody("");
+    }
+
+    setBusy(false);
+  }
+
+  return (
+    <section>
+      <button
+        className="ghost"
+        onClick={onBack}
+      >
+        ← Zurück zu Kontakten
+      </button>
+
+      <h2>
+        💬 Chat mit{" "}
+        {otherName ||
+          "Tanzpartner/in"}
+      </h2>
+
+      {contact.workshop_id && (
+        <div className="notice success">
+          👫 Tanzpaar für diesen Workshop
+          gefunden
+        </div>
+      )}
+
+      <div className="card chat-box">
+        {messages.length ? (
+          messages.map(m => (
+            <div
+              key={m.id}
+              className={`chat-message ${
+                m.sender_id === userId
+                  ? "mine"
+                  : "theirs"
+              }`}
+            >
+              <div>{m.body}</div>
+
+              <small>
+                {new Intl.DateTimeFormat(
+                  "de-DE",
+                  {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                  }
+                ).format(
+                  new Date(
+                    m.created_at
+                  )
+                )}
+              </small>
+            </div>
+          ))
+        ) : (
+          <div className="muted">
+            Noch keine Nachricht.
+            Schreib einfach „Hallo“ 👋
+          </div>
+        )}
+      </div>
+
+      <form
+        className="chat-form"
+        onSubmit={send}
+      >
+        <input
+          value={body}
+          onChange={e =>
+            setBody(e.target.value)
+          }
+          placeholder="Nachricht schreiben…"
+          maxLength="1000"
+        />
+
+        <button
+          className="primary"
+          disabled={busy}
+        >
+          {busy ? "…" : "Senden"}
+        </button>
+      </form>
+    </section>
+  );
+          }
+    function Contacts({
+  userId,
+  unreadCount,
+  setUnreadCount
+}) {
+  const [items, setItems] = useState([]);
+  const [chat, setChat] = useState(null);
+  const [myShare, setMyShare] = useState(false);
+  const [sharedDetails, setSharedDetails] = useState({});
+
+  async function load() {
+    const [
+      { data, error },
+      { data: mine }
+    ] = await Promise.all([
+      supabase
+        .from("contact_requests")
+        .select(
+          "*, requester:requester_id(id,display_name), recipient:recipient_id(id,display_name)"
+        )
+        .or(
+          `requester_id.eq.${userId},recipient_id.eq.${userId}`
+        )
+        .order("created_at", {
+          ascending: false
+        }),
+
+      supabase
+        .from("contact_details")
+        .select("share_contacts")
+        .eq("user_id", userId)
+        .maybeSingle()
+    ]);
+
+    if (error) {
+      alert(error.message);
+    } else {
+      setItems(data || []);
+    }
+
+    setMyShare(
+      mine?.share_contacts === true
+    );
+
+    const accepted =
+      (data || []).filter(
+        i => i.status === "accepted"
+      );
+
+    const details = {};
+
+    for (const i of accepted) {
+      const otherId =
+        i.requester_id === userId
+          ? i.recipient_id
+          : i.requester_id;
+
+      const { data: d } =
+        await supabase
+          .from("contact_details")
+          .select(
+            "email,phone,share_contacts"
+          )
+          .eq("user_id", otherId)
+          .maybeSingle();
+
+      if (d) {
+        details[otherId] = d;
+      }
+    }
+
+    setSharedDetails(details);
+  }
+
+  useEffect(() => {
+    load();
+  }, [userId]);
+
+  async function accept(id) {
+    const item =
+      items.find(i => i.id === id);
+
+    if (!item) return;
+
+    if (item.workshop_id) {
+      const [a, b] = [
+        item.requester_id,
+        item.recipient_id
+      ].sort();
+
+      const {
+        error: pairError
+      } = await supabase
+        .from("workshop_pairs")
+        .insert({
+          workshop_id:
+            item.workshop_id,
+          user1_id: a,
+          user2_id: b
+        });
+
+      if (pairError) {
+        return alert(
+          pairError.message.includes(
+            "duplicate"
+          ) ||
+          pairError.code === "23505"
+            ? "Für diesen Workshop hat bereits jemand einen Tanzpartner gefunden."
+            : pairError.message
+        );
+      }
+    }
+
+    const { error } =
+      await supabase
+        .from("contact_requests")
+        .update({
+          status: "accepted"
+        })
+        .eq("id", id);
+
+    if (error) {
+      return alert(error.message);
+    }
+
+    await load();
+  }
+
+  async function setSharing(
+    enabled
+  ) {
+    const { error } =
+      await supabase
+        .from("contact_details")
+        .upsert({
+          user_id: userId,
+          share_contacts:
+            enabled
+        });
+
+    if (error) {
+      return alert(error.message);
+    }
+
+    setMyShare(enabled);
+    await load();
+  }
+
+  function openChat(item) {
+    setChat(item);
+  }
+
+  function markChatRead() {
+    setUnreadCount(0);
+
+    localStorage.setItem(
+      `tpb_last_read_${userId}`,
+      new Date().toISOString()
+    );
+  }
+
+  if (chat) {
+    return (
+      <Chat
+        userId={userId}
+        contact={chat}
+        onRead={markChatRead}
+        onBack={() => {
+          setChat(null);
+          load();
+        }}
+      />
+    );
+  }
+
+  return (
+    <section>
+      <h2>
+        Kontakte 💬{" "}
+        {unreadCount > 0 && (
+          <span
+            style={{
+              display: "inline-flex",
+              minWidth: "26px",
+              height: "26px",
+              padding: "0 7px",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "999px",
+              background: "#e53935",
+              color: "#fff",
+              fontSize: "14px",
+              verticalAlign: "middle"
+            }}
+          >
+            {unreadCount}
+          </span>
+        )}
+      </h2>
+
+      <div className="card">
+        <b>🔐 Kontaktdaten</b>
+
+        <p className="muted">
+          Deine Telefonnummer und
+          E-Mail-Adresse werden erst
+          sichtbar, wenn du und dein
+          Tanzpartner sie beide
+          freigegeben habt.
+        </p>
+
+        {!myShare && (
+          <button
+            className="primary"
+            onClick={() =>
+              setSharing(true)
+            }
+          >
+            Kontaktdaten freigeben
+          </button>
+        )}
+
+        {myShare && (
+          <div className="notice success">
+            ✓ Du hast deine Kontaktdaten
+            freigegeben.
+          </div>
+        )}
+      </div>
+
+      {items.length ? (
+        items.map(i => {
+          const incoming =
+            i.recipient_id === userId;
+
+          const other = incoming
+            ? i.requester
+            : i.recipient;
+
+          const otherId = incoming
+            ? i.requester_id
+            : i.recipient_id;
+
+          const d =
+            sharedDetails[otherId];
+
+          const bothShared =
+            myShare &&
+            d?.share_contacts === true &&
+            (d?.email || d?.phone);
+
+          return (
+            <div
+              className="card row"
+              key={i.id}
+            >
+              <div>
+                <b>
+                  {other?.display_name ||
+                    "Tanzpartner/in"}
+                </b>
+
+                <div className="muted">
+                  {i.workshop_id
+                    ? "Workshop-Kontakt"
+                    : "Kontaktanfrage"}{" "}
+                  · Status: {i.status}
+                </div>
+
+                {i.status ===
+                  "accepted" &&
+                  (bothShared ? (
+                    <div className="notice success">
+                      📞{" "}
+                      {d.phone || "–"}{" "}
+                      · ✉️{" "}
+                      {d.email || "–"}
+                    </div>
+                  ) : (
+                    <div className="muted">
+                      🔐 Kontaktd
