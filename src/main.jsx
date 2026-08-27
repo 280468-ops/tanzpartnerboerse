@@ -40,6 +40,7 @@ function App() {
   }
 
   return session ? <Dashboard session={session} /> : <Auth />;
+}
 function Auth() {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
