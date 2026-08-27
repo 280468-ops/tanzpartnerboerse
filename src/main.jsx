@@ -130,7 +130,7 @@ function App() {
 
 return (
   <ErrorBoundary>
-    <Dashboard session={session} />
+<div className="card">Dashboard-Test funktioniert</div>
   </ErrorBoundary>
 );
 }
