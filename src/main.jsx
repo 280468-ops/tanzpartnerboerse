@@ -1746,7 +1746,82 @@ const startAt = new Date(
   alert("Workshop wurde erfolgreich angelegt.");
 
   await loadWorkshops();
+}async function editWorkshop(workshop) {
+  const title = prompt("Name des Workshops:", workshop.title);
+  if (!title) return;
+
+  const dateObj = new Date(workshop.starts_at);
+
+  const date = prompt(
+    "Datum (TT.MM.JJJJ):",
+    `${String(dateObj.getDate()).padStart(2, "0")}.${String(dateObj.getMonth() + 1).padStart(2, "0")}.${dateObj.getFullYear()}`
+  );
+  if (!date) return;
+
+  const time = prompt(
+    "Startzeit (z.B. 16:15):",
+    `${String(dateObj.getHours()).padStart(2, "0")}:${String(dateObj.getMinutes()).padStart(2, "0")}`
+  );
+  if (!time) return;
+
+  const location = prompt("Ort:", workshop.location || "");
+  if (!location) return;
+
+  const bookingUrl = prompt(
+    "Eventfrog-Link (optional):",
+    workshop.booking_url || ""
+  ) || "";
+
+  const parts = date.split(".");
+  if (parts.length !== 3) {
+    alert("Bitte das Datum im Format TT.MM.JJJJ eingeben.");
+    return;
+  }
+
+  const [day, month, year] = parts;
+
+  const startsAt =
+    `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${time}:00`;
+
+  const { error } = await supabase
+    .from("workshops")
+    .update({
+      title,
+      starts_at: startsAt,
+      location,
+      booking_url: bookingUrl
+    })
+    .eq("id", workshop.id);
+
+  if (error) {
+    alert("Fehler beim Bearbeiten des Workshops: " + error.message);
+    return;
+  }
+
+  alert("Workshop wurde erfolgreich geändert.");
+  await loadWorkshops();
 }
+
+async function deleteWorkshop(workshop) {
+  const confirmed = confirm(
+    `Workshop "${workshop.title}" wirklich löschen?`
+  );
+
+  if (!confirmed) return;
+
+  const { error } = await supabase
+    .from("workshops")
+    .delete()
+    .eq("id", workshop.id);
+
+  if (error) {
+    alert("Fehler beim Löschen des Workshops: " + error.message);
+    return;
+  }
+
+  alert("Workshop wurde gelöscht.");
+  await loadWorkshops();
+    }
 
   async function loadParticipants(workshopId) {
     const { data, error } = await supabase
