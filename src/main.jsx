@@ -425,18 +425,21 @@ function Workshops({ currentUser }) {
       );
 
       map[w.id] = (wi || [])
-        .filter(
-          x =>
-            x.user_id !== currentUser &&
-            !paired.has(x.user_id) &&
-            x.profiles?.is_visible !== false &&
-            x.profiles?.is_blocked !== true
-        )
-        .map(x => ({
-          ...x.profiles,
-          workshop_level: x.level
-        }))
-        .filter(Boolean);
+  .filter(
+    x =>
+      x.user_id &&
+      x.user_id !== currentUser &&
+      !paired.has(x.user_id) &&
+      x.profiles?.is_visible !== false &&
+      x.profiles?.is_blocked !== true
+  )
+  .map(x => ({
+    ...x.profiles,
+    id: x.user_id,
+    user_id: x.user_id,
+    workshop_level: x.level
+  }))
+  .filter(Boolean);
     }
 
     setSeekers(map);
