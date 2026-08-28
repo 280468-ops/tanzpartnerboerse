@@ -1679,25 +1679,52 @@ function AdminPanel() {
     );
   }
 
-  async function loadWorkshops() {
-    setLoading(true);
+  async function addWorkshop() {
+  const title = prompt("Name des Workshops:");
+  if (!title) return;
 
-    const { data, error } = await supabase
-      .from("workshops")
-      .select(
-        "id, title, starts_at, location, booking_url, dance_styles(name)"
-      )
-      .order("starts_at");
+  const date = prompt("Datum (TT.MM.JJJJ):");
+  if (!date) return;
 
-    setLoading(false);
+  const time = prompt("Startzeit (z.B. 16:15):");
+  if (!time) return;
 
-    if (error) {
-      alert("Fehler beim Laden der Workshops: " + error.message);
-      return;
-    }
+  const location = prompt("Ort:");
+  if (!location) return;
 
-    setWorkshops(data || []);
+  const bookingUrl = prompt("Eventfrog-Link (optional):") || "";
+
+  const parts = date.split(".");
+  if (parts.length !== 3) {
+    alert("Bitte das Datum im Format TT.MM.JJJJ eingeben.");
+    return;
   }
+
+  const [day, month, year] = parts;
+
+  const startsAt =
+    `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${time}:00`;
+
+  const { data, error } = await supabase
+    .from("workshops")
+    .insert({
+      title,
+      starts_at: startsAt,
+      location,
+      booking_url: bookingUrl
+    })
+    .select()
+    .single();
+
+  if (error) {
+    alert("Fehler beim Anlegen des Workshops: " + error.message);
+    return;
+  }
+
+  alert("Workshop wurde erfolgreich angelegt.");
+
+  await loadWorkshops();
+}
 
   async function loadParticipants(workshopId) {
     const { data, error } = await supabase
