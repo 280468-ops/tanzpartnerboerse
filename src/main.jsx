@@ -95,6 +95,7 @@ class ErrorBoundary extends React.Component {
     return this.props.children;
 }
 }
+
 function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
