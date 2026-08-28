@@ -1638,7 +1638,11 @@ function AdminPanel() {
   const [workshops, setWorkshops] = useState([]);
   const [participants, setParticipants] = useState({});
   const [loading, setLoading] = useState(false);
-
+useEffect(() => {
+  if (view === "workshops") {
+    loadWorkshops();
+  }
+}, [view]);
   async function loadUsers() {
     setLoading(true);
 
