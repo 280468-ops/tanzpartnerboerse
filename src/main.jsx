@@ -874,38 +874,67 @@ function ProfileEditor({ user, profile, setProfile }) {
           user_id: user.id,
           email: (contact.email || user.email || "").trim() || null,
           phone: (contact.phone || "").trim() || null,
+async function save(e) {
+  e.preventDefault();
+  setBusy(true);
+
+  try {
+    const payload = {
+      id: user.id,
+      display_name: (form.display_name || "Tanzpartner").trim(),
+      age: form.age ? Number(form.age) : null,
+      gender: form.gender || null,
+      height_cm: form.height_cm
+        ? Number(form.height_cm)
+        : null,
+      is_visible: form.is_visible !== false
+    };
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .upsert(payload, { onConflict: "id" })
+      .select()
+      .single();
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    const { error: contactError } = await supabase
+      .from("contact_details")
+      .upsert(
+        {
+          user_id: user.id,
+          email:
+            (contact.email || user.email || "").trim() || null,
+          phone:
+            (contact.phone || "").trim() || null,
           share_contacts: contact.share_contacts === true
         },
         { onConflict: "user_id" }
       );
 
     if (contactError) {
-      alert("Kontaktdaten konnten nicht gespeichert werden:\n" + contactError.message);
-      setBusy(false);
+      alert(
+        "Kontaktdaten konnten nicht gespeichert werden:\n" +
+        contactError.message
+      );
       return;
     }
 
     setProfile(data);
-
     alert("Profil gespeichert ✅");
+
   } catch (err) {
-    alert("Fehler beim Speichern:\n" + (err.message || "Unbekannter Fehler"));
+    alert(
+      "Fehler beim Speichern:\n" +
+      (err.message || "Unbekannter Fehler")
+    );
   } finally {
     setBusy(false);
   }
-  }
-
-    if (contactError) {
-      alert(contactError.message);
-      setBusy(false);
-      return;
-    }
-
-    setProfile(data);
-    alert("Profil gespeichert ✅");
-    setBusy(false);
-  }
-
+}
   return (
     <section>
       <h2>Mein Profil</h2>
