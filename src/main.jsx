@@ -996,6 +996,210 @@ function ProfileEditor({ user, profile, setProfile }) {
             onChange={e =>
               changeContact("phone", e.target.value)
             }
+function ProfileEditor({ user, profile, setProfile }) {
+  const [form, setForm] = useState(profile || {});
+  const [contact, setContact] = useState({
+    email: user.email || "",
+    phone: "",
+    share_contacts: false
+  });
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setForm(profile || {});
+
+    supabase
+      .from("contact_details")
+      .select("email,phone,share_contacts")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setContact(
+          data || {
+            email: user.email || "",
+            phone: "",
+            share_contacts: false
+          }
+        );
+      });
+  }, [profile, user.id, user.email]);
+
+  function change(k, v) {
+    setForm(f => ({
+      ...f,
+      [k]: v
+    }));
+  }
+
+  function changeContact(k, v) {
+    setContact(c => ({
+      ...c,
+      [k]: v
+    }));
+  }
+
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true);
+
+    try {
+      const payload = {
+        id: user.id,
+        display_name: (form.display_name || "Tanzpartner").trim(),
+        age: form.age ? Number(form.age) : null,
+        gender: form.gender || null,
+        height_cm: form.height_cm
+          ? Number(form.height_cm)
+          : null,
+        is_visible: form.is_visible !== false
+      };
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .upsert(payload, {
+          onConflict: "id"
+        })
+        .select()
+        .single();
+
+      if (error) {
+        alert(
+          "Profil konnte nicht gespeichert werden:\n" +
+          error.message
+        );
+        return;
+      }
+
+      const { error: contactError } = await supabase
+        .from("contact_details")
+        .upsert(
+          {
+            user_id: user.id,
+            email:
+              (contact.email || user.email || "").trim() ||
+              null,
+            phone:
+              (contact.phone || "").trim() || null,
+            share_contacts:
+              contact.share_contacts === true
+          },
+          {
+            onConflict: "user_id"
+          }
+        );
+
+      if (contactError) {
+        alert(
+          "Kontaktdaten konnten nicht gespeichert werden:\n" +
+          contactError.message
+        );
+        return;
+      }
+
+      setProfile(data);
+      alert("Profil gespeichert ✅");
+    } catch (err) {
+      alert(
+        "Fehler beim Speichern:\n" +
+        (err.message || "Unbekannter Fehler")
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section>
+      <h2>Mein Profil</h2>
+
+      <form className="card form" onSubmit={save}>
+        <label>
+          Anzeigename
+          <input
+            value={form.display_name || ""}
+            onChange={e =>
+              change("display_name", e.target.value)
+            }
+            required
+          />
+        </label>
+
+        <label>
+          Alter
+          <input
+            type="number"
+            min="18"
+            max="100"
+            value={form.age || ""}
+            onChange={e =>
+              change("age", e.target.value)
+            }
+          />
+        </label>
+
+        <label>
+          Geschlecht
+          <select
+            value={form.gender || ""}
+            onChange={e =>
+              change("gender", e.target.value)
+            }
+          >
+            <option value="">Bitte auswählen</option>
+            <option value="Frau">Frau</option>
+            <option value="Mann">Mann</option>
+            <option value="Divers">Divers</option>
+          </select>
+        </label>
+
+        <label>
+          Größe in cm{" "}
+          <span className="small">(optional)</span>
+          <input
+            type="number"
+            min="120"
+            max="230"
+            step="1"
+            value={form.height_cm || ""}
+            onChange={e =>
+              change("height_cm", e.target.value)
+            }
+            placeholder="z. B. 172"
+          />
+        </label>
+
+        <hr />
+
+        <h3>Kontaktdaten</h3>
+
+        <p className="muted">
+          Diese Daten sind niemals öffentlich. Sie werden
+          erst sichtbar, wenn ihr euch gegenseitig
+          freigebt.
+        </p>
+
+        <label>
+          E-Mail für den Kontakt{" "}
+          <span className="small">(optional)</span>
+          <input
+            type="email"
+            value={contact.email || ""}
+            onChange={e =>
+              changeContact("email", e.target.value)
+            }
+            placeholder="name@beispiel.de"
+          />
+        </label>
+
+        <label>
+          Telefon{" "}
+          <span className="small">(optional)</span>
+          <input
+            type="tel"
+            value={contact.phone || ""}
+            onChange={e =>
+              changeContact("phone", e.target.value)
+            }
             placeholder="z. B. 0170 1234567"
           />
         </label>
@@ -1020,21 +1224,27 @@ function ProfileEditor({ user, profile, setProfile }) {
         <label className="check">
           <input
             type="checkbox"
-            checked={form.is_visible !== false}
+            checked={
+              form.is_visible !== false
+            }
             onChange={e =>
-              change("is_visible", e.target.checked)
+              change(
+                "is_visible",
+                e.target.checked
+              )
             }
           />
           Profil für andere sichtbar
         </label>
 
         <button
-  type="submit"
-  className="primary wide"
-  disabled={busy}
->
-  {busy ? "Speichern..." : "Profil speichern"}
-</button>
+          className="primary wide"
+          disabled={busy}
+        >
+          {busy
+            ? "Speichern..."
+            : "Profil speichern"}
+        </button>
       </form>
     </section>
   );
