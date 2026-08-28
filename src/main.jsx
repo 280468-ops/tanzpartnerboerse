@@ -1689,7 +1689,7 @@ useEffect(() => {
     .from("workshops")
     .select("id, title, starts_at, location, booking_url")
     .order("starts_at");
-
+B B
   setLoading(false);
 
   if (error) {
