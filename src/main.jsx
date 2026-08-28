@@ -128,9 +128,13 @@ function App() {
     return <ResetPassword onDone={() => setResetMode(false)} />;
   }
 
+if (!session) {
+  return <Auth />;
+}
+
 return (
   <ErrorBoundary>
-<Dashboard session={session} />
+    <Dashboard session={session} />
   </ErrorBoundary>
 );
 }
