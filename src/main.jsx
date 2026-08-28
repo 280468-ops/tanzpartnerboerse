@@ -861,20 +861,6 @@ function ProfileEditor({ user, profile, setProfile }) {
   }
 }
 
-    if (error) {
-      alert("Profil konnte nicht gespeichert werden:\n" + error.message);
-      setBusy(false);
-      return;
-    }
-
-    const { error: contactError } = await supabase
-      .from("contact_details")
-      .upsert(
-        {
-          user_id: user.id,
-          email: (contact.email || user.email || "").trim() || null,
-          phone: (contact.phone || "").trim() || null,
-async function save(e) {
   e.preventDefault();
   setBusy(true);
 
