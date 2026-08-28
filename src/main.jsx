@@ -976,11 +976,12 @@ function ProfileEditor({ user, profile, setProfile }) {
         </label>
 
         <button
-          className="primary wide"
-          disabled={busy}
-        >
-          {busy ? "Speichern…" : "Profil speichern"}
-        </button>
+  type="submit"
+  className="primary wide"
+  disabled={busy}
+>
+  {busy ? "Speichern..." : "Profil speichern"}
+</button>
       </form>
     </section>
   );
