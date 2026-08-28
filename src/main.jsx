@@ -1682,6 +1682,23 @@ useEffect(() => {
       )
     );
   }
+  async function loadWorkshops() {
+  setLoading(true);
+
+  const { data, error } = await supabase
+    .from("workshops")
+    .select("id, title, starts_at, location, booking_url, dance_style")
+    .order("starts_at");
+
+  setLoading(false);
+
+  if (error) {
+    alert("Fehler beim Laden der Workshops: " + error.message);
+    return;
+  }
+
+  setWorkshops(data || []);
+  }
 
   async function addWorkshop() {
   const title = prompt("Name des Workshops:");
