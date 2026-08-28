@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { createClient } from "@supabase/supabase-js";
 import "./styles.css";
@@ -7,6 +7,9 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+const LOGIN_BACKGROUND_URL =
+  `${supabaseUrl}/storage/v1/object/public/app-images/login-bg.png`;
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -146,6 +149,23 @@ function Auth() {
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    const shell =
+      document.querySelector(".auth-shell");
+
+    if (!shell) return;
+
+    const url =
+      `${LOGIN_BACKGROUND_URL}?v=${Date.now()}`;
+
+    shell.style.backgroundImage =
+      `linear-gradient(#00000055,#00000055), url("${url}")`;
+
+    shell.style.backgroundPosition = "center";
+    shell.style.backgroundSize = "cover";
+    shell.style.backgroundRepeat = "no-repeat";
+  }, []);
 
   async function submit(e) {
     e.preventDefault();
@@ -2350,6 +2370,15 @@ function AdminPanel() {
   const [loading, setLoading] =
     useState(false);
 
+  const [backgroundUploading, setBackgroundUploading] =
+    useState(false);
+
+  const [backgroundVersion, setBackgroundVersion] =
+    useState(Date.now());
+
+  const fileInputRef =
+    useRef(null);
+
   useEffect(() => {
     if (view === "workshops") {
       loadWorkshops();
@@ -2421,6 +2450,89 @@ function AdminPanel() {
           : u
       )
     );
+  }
+
+  async function uploadLoginBackground(
+    event
+  ) {
+    const file =
+      event.target.files?.[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert(
+        "Bitte wähle eine Bilddatei aus."
+      );
+
+      event.target.value = "";
+      return;
+    }
+
+    const maxSize =
+      10 * 1024 * 1024;
+
+    if (file.size > maxSize) {
+      alert(
+        "Das Bild darf maximal 10 MB groß sein."
+      );
+
+      event.target.value = "";
+      return;
+    }
+
+    setBackgroundUploading(true);
+
+    try {
+      const { error } =
+        await supabase.storage
+          .from("app-images")
+          .upload(
+            "login-bg.png",
+            file,
+            {
+              cacheControl: "0",
+              upsert: true,
+              contentType:
+                file.type
+            }
+          );
+
+      if (error) {
+        throw error;
+      }
+
+      const newVersion =
+        Date.now();
+
+      setBackgroundVersion(
+        newVersion
+      );
+
+      alert(
+        "Login-Hintergrund wurde erfolgreich geändert ✅"
+      );
+    } catch (error) {
+      console.error(
+        "Hintergrundbild Upload Fehler:",
+        error
+      );
+
+      alert(
+        "Das Hintergrundbild konnte nicht hochgeladen werden:\n\n" +
+          error.message
+      );
+    } finally {
+      setBackgroundUploading(false);
+
+      if (event.target) {
+        event.target.value = "";
+      }
+    }
+  }
+
+  function openBackgroundPicker() {
+    fileInputRef.current?.click();
   }
 
   async function loadWorkshops() {
@@ -2850,6 +2962,7 @@ function AdminPanel() {
 
       {view === "menu" && (
         <div className="grid">
+
           <button
             className="profile-card"
             onClick={() => {
@@ -2907,6 +3020,100 @@ function AdminPanel() {
               verwalten.
             </p>
           </button>
+
+          <button
+            className="profile-card"
+            onClick={() =>
+              setView(
+                "background"
+              )
+            }
+          >
+            <h3>
+              🎨 Login-Hintergrund
+            </h3>
+
+            <p className="muted">
+              Hintergrundbild der
+              Anmeldeseite ändern.
+            </p>
+          </button>
+
+        </div>
+      )}
+
+      {view === "background" && (
+        <div>
+          <button
+            className="ghost"
+            onClick={() =>
+              setView("menu")
+            }
+          >
+            ← Zurück
+          </button>
+
+          <h2>
+            🎨 Login-Hintergrund
+          </h2>
+
+          <div className="card">
+
+            <h3>
+              Aktuelles Hintergrundbild
+            </h3>
+
+            <img
+              src={`${LOGIN_BACKGROUND_URL}?v=${backgroundVersion}`}
+              alt="Login-Hintergrund"
+              style={{
+                width: "100%",
+                maxHeight: "350px",
+                objectFit: "cover",
+                borderRadius: "16px",
+                display: "block",
+                marginBottom: "18px"
+              }}
+            />
+
+            <p className="muted">
+              Hier kannst du das Bild der
+              Anmeldeseite direkt vom Handy
+              austauschen.
+            </p>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={
+                uploadLoginBackground
+              }
+              style={{
+                display: "none"
+              }}
+            />
+
+            <button
+              className="primary"
+              onClick={
+                openBackgroundPicker
+              }
+              disabled={
+                backgroundUploading
+              }
+            >
+              {backgroundUploading
+                ? "Bild wird hochgeladen…"
+                : "📷 Neues Bild auswählen"}
+            </button>
+
+            <p className="small">
+              JPG, PNG oder andere Bildformate.
+              Maximale Größe: 10 MB.
+            </p>
+
+          </div>
         </div>
       )}
 
