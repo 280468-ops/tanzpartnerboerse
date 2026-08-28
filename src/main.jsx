@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { createClient } from "@supabase/supabase-js";
 import "./styles.css";
@@ -8,8 +8,13 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+/*
+  Öffentliches Login-Hintergrundbild aus Supabase Storage.
+  Dadurch ist kein Upload aus der App nötig und der bisherige
+  RLS-Fehler beim Hochladen wird vermieden.
+*/
 const LOGIN_BACKGROUND_URL =
-  `${supabaseUrl}/storage/v1/object/public/app-images/login-bg.png`;
+  "https://nzyenvwmnaokqsxsjcyf.supabase.co/storage/v1/object/public/app-images/login-bg.png";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -41,33 +46,20 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div
-          className="card"
-          style={{ margin: 20, padding: 20 }}
-        >
+        <div className="card error-card">
           <h2>⚠️ Fehler in der App</h2>
 
           <p>
             <strong>
-              {this.state.error?.message ||
-                "Unbekannter Fehler"}
+              {this.state.error?.message || "Unbekannter Fehler"}
             </strong>
           </p>
 
           <details>
-            <summary>
-              Technische Details anzeigen
-            </summary>
+            <summary>Technische Details anzeigen</summary>
 
-            <pre
-              style={{
-                whiteSpace: "pre-wrap",
-                fontSize: 12,
-                marginTop: 15
-              }}
-            >
-              {this.state.error?.stack ||
-                "Kein Stack verfügbar"}
+            <pre>
+              {this.state.error?.stack || "Kein Stack verfügbar"}
 
               {"\n\n"}
 
@@ -101,9 +93,7 @@ function App() {
       setLoading(false);
     });
 
-    const {
-      data: listener
-    } = supabase.auth.onAuthStateChange(
+    const { data: listener } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
         setSession(currentSession);
 
@@ -124,11 +114,7 @@ function App() {
   }
 
   if (resetMode) {
-    return (
-      <ResetPassword
-        onDone={() => setResetMode(false)}
-      />
-    );
+    return <ResetPassword onDone={() => setResetMode(false)} />;
   }
 
   if (!session) {
@@ -150,23 +136,6 @@ function Auth() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    const shell =
-      document.querySelector(".auth-shell");
-
-    if (!shell) return;
-
-    const url =
-      `${LOGIN_BACKGROUND_URL}?v=${Date.now()}`;
-
-    shell.style.backgroundImage =
-      `linear-gradient(#00000055,#00000055), url("${url}")`;
-
-    shell.style.backgroundPosition = "center";
-    shell.style.backgroundSize = "cover";
-    shell.style.backgroundRepeat = "no-repeat";
-  }, []);
-
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
@@ -175,21 +144,18 @@ function Auth() {
     try {
       if (mode === "register") {
         if (!displayName.trim()) {
-          throw new Error(
-            "Bitte einen Anzeigenamen eingeben."
-          );
+          throw new Error("Bitte einen Anzeigenamen eingeben.");
         }
 
-        const { error } =
-          await supabase.auth.signUp({
-            email: email.trim(),
-            password,
-            options: {
-              data: {
-                display_name: displayName.trim()
-              }
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: {
+              display_name: displayName.trim()
             }
-          });
+          }
+        });
 
         if (error) throw error;
 
@@ -197,26 +163,27 @@ function Auth() {
           "Registrierung erfolgreich. Falls E-Mail-Bestätigung aktiviert ist, prüfe bitte dein Postfach."
         );
       } else {
-        const { error } =
-          await supabase.auth.signInWithPassword({
-            email: email.trim(),
-            password
-          });
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password
+        });
 
         if (error) throw error;
       }
     } catch (err) {
-      setMessage(
-        err.message ||
-          "Es ist ein Fehler aufgetreten."
-      );
+      setMessage(err.message || "Es ist ein Fehler aufgetreten.");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="auth-shell">
+    <div
+      className="auth-shell"
+      style={{
+        backgroundImage: `linear-gradient(#00000055,#00000055), url("${LOGIN_BACKGROUND_URL}")`
+      }}
+    >
       <div className="auth-card">
         <div className="logo">💃🕺</div>
 
@@ -229,9 +196,7 @@ function Auth() {
         <div className="tabs">
           <button
             type="button"
-            className={
-              mode === "login" ? "active" : ""
-            }
+            className={mode === "login" ? "active" : ""}
             onClick={() => setMode("login")}
           >
             Anmelden
@@ -239,9 +204,7 @@ function Auth() {
 
           <button
             type="button"
-            className={
-              mode === "register" ? "active" : ""
-            }
+            className={mode === "register" ? "active" : ""}
             onClick={() => setMode("register")}
           >
             Registrieren
@@ -255,9 +218,7 @@ function Auth() {
 
               <input
                 value={displayName}
-                onChange={e =>
-                  setDisplayName(e.target.value)
-                }
+                onChange={e => setDisplayName(e.target.value)}
                 placeholder="z. B. Alex"
                 required
               />
@@ -270,9 +231,7 @@ function Auth() {
             <input
               type="email"
               value={email}
-              onChange={e =>
-                setEmail(e.target.value)
-              }
+              onChange={e => setEmail(e.target.value)}
               placeholder="name@beispiel.de"
               required
             />
@@ -284,30 +243,23 @@ function Auth() {
             <input
               type="password"
               value={password}
-              onChange={e =>
-                setPassword(e.target.value)
-              }
+              onChange={e => setPassword(e.target.value)}
               placeholder="Mindestens 6 Zeichen"
               required
               minLength="6"
             />
           </label>
 
-          <button
-            className="primary wide"
-            disabled={busy}
-          >
+          <button className="primary wide" disabled={busy}>
             {busy
               ? "Bitte warten…"
               : mode === "login"
-              ? "Anmelden"
-              : "Konto erstellen"}
+                ? "Anmelden"
+                : "Konto erstellen"}
           </button>
         </form>
 
-        {message && (
-          <div className="notice">{message}</div>
-        )}
+        {message && <div className="notice">{message}</div>}
       </div>
     </div>
   );
@@ -316,12 +268,10 @@ function Auth() {
 function Dashboard({ session }) {
   const [tab, setTab] = useState("workshops");
   const [profile, setProfile] = useState(null);
-  const [profileLoading, setProfileLoading] =
-    useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   const isAdmin =
-    session.user.id ===
-    "dee327bb-f3eb-4ada-bf05-bad48e4844df";
+    session.user.id === "dee327bb-f3eb-4ada-bf05-bad48e4844df";
 
   async function logout() {
     await supabase.auth.signOut();
@@ -342,10 +292,7 @@ function Dashboard({ session }) {
       if (!mounted) return;
 
       if (error) {
-        console.error(
-          "Profil konnte nicht geladen werden:",
-          error
-        );
+        console.error("Profil konnte nicht geladen werden:", error);
       }
 
       setProfile(data || null);
@@ -363,33 +310,25 @@ function Dashboard({ session }) {
     <div className="app">
       <header>
         <div>
-          <div className="brand">
-            💃🕺 Tanzpartnerbörse
-          </div>
+          <div className="brand">💃🕺 Tanzpartnerbörse</div>
 
           <div className="small">
             Hallo{" "}
             {profile?.display_name ||
-              session.user.user_metadata
-                ?.display_name ||
+              session.user.user_metadata?.display_name ||
               "Tanzfreund"}
             !
           </div>
         </div>
 
-        <button
-          className="ghost"
-          onClick={logout}
-        >
+        <button className="ghost" onClick={logout}>
           Abmelden
         </button>
       </header>
 
       <main>
         {tab === "workshops" && (
-          <Workshops
-            currentUser={session.user.id}
-          />
+          <Workshops currentUser={session.user.id} />
         )}
 
         {tab === "profil" && (
@@ -402,15 +341,11 @@ function Dashboard({ session }) {
         )}
 
         {tab === "favoriten" && (
-          <Favorites
-            userId={session.user.id}
-          />
+          <Favorites userId={session.user.id} />
         )}
 
         {tab === "kontakte" && (
-          <Contacts
-            userId={session.user.id}
-          />
+          <Contacts userId={session.user.id} />
         )}
 
         {tab === "admin" && isAdmin && (
@@ -422,56 +357,32 @@ function Dashboard({ session }) {
 
       <nav>
         <button
-          className={
-            tab === "workshops"
-              ? "selected"
-              : ""
-          }
-          onClick={() =>
-            setTab("workshops")
-          }
+          className={tab === "workshops" ? "selected" : ""}
+          onClick={() => setTab("workshops")}
         >
           🎟️
           <span>Workshops</span>
         </button>
 
         <button
-          className={
-            tab === "favoriten"
-              ? "selected"
-              : ""
-          }
-          onClick={() =>
-            setTab("favoriten")
-          }
+          className={tab === "favoriten" ? "selected" : ""}
+          onClick={() => setTab("favoriten")}
         >
           ❤️
           <span>Favoriten</span>
         </button>
 
         <button
-          className={
-            tab === "kontakte"
-              ? "selected"
-              : ""
-          }
-          onClick={() =>
-            setTab("kontakte")
-          }
+          className={tab === "kontakte" ? "selected" : ""}
+          onClick={() => setTab("kontakte")}
         >
           💬
           <span>Kontakte</span>
         </button>
 
         <button
-          className={
-            tab === "profil"
-              ? "selected"
-              : ""
-          }
-          onClick={() =>
-            setTab("profil")
-          }
+          className={tab === "profil" ? "selected" : ""}
+          onClick={() => setTab("profil")}
         >
           👤
           <span>Profil</span>
@@ -479,14 +390,8 @@ function Dashboard({ session }) {
 
         {isAdmin && (
           <button
-            className={
-              tab === "admin"
-                ? "selected"
-                : ""
-            }
-            onClick={() =>
-              setTab("admin")
-            }
+            className={tab === "admin" ? "selected" : ""}
+            onClick={() => setTab("admin")}
           >
             🔐
             <span>Admin</span>
@@ -499,14 +404,11 @@ function Dashboard({ session }) {
 
 function Workshops({ currentUser }) {
   const [workshops, setWorkshops] = useState([]);
-  const [myInterests, setMyInterests] =
-    useState(new Set());
-  const [myPairs, setMyPairs] =
-    useState(new Set());
+  const [myInterests, setMyInterests] = useState(new Set());
+  const [myPairs, setMyPairs] = useState(new Set());
   const [seekers, setSeekers] = useState({});
   const [busy, setBusy] = useState(true);
-  const [selectedLevels, setSelectedLevels] =
-    useState({});
+  const [selectedLevels, setSelectedLevels] = useState({});
 
   async function load() {
     setBusy(true);
@@ -530,9 +432,7 @@ function Workshops({ currentUser }) {
 
       supabase
         .from("workshop_pairs")
-        .select(
-          "workshop_id,user1_id,user2_id"
-        )
+        .select("workshop_id,user1_id,user2_id")
         .or(
           `user1_id.eq.${currentUser},user2_id.eq.${currentUser}`
         )
@@ -545,28 +445,17 @@ function Workshops({ currentUser }) {
     setWorkshops(ws || []);
 
     setMyInterests(
-      new Set(
-        (interests || []).map(
-          x => x.workshop_id
-        )
-      )
+      new Set((interests || []).map(x => x.workshop_id))
     );
 
     setMyPairs(
-      new Set(
-        (pairs || []).map(
-          x => x.workshop_id
-        )
-      )
+      new Set((pairs || []).map(x => x.workshop_id))
     );
 
     const map = {};
 
     for (const w of ws || []) {
-      const [
-        { data: wi },
-        { data: wp }
-      ] = await Promise.all([
+      const [{ data: wi }, { data: wp }] = await Promise.all([
         supabase
           .from("workshop_interests")
           .select(
@@ -576,17 +465,12 @@ function Workshops({ currentUser }) {
 
         supabase
           .from("workshop_pairs")
-          .select(
-            "user1_id,user2_id"
-          )
+          .select("user1_id,user2_id")
           .eq("workshop_id", w.id)
       ]);
 
       const paired = new Set(
-        (wp || []).flatMap(p => [
-          p.user1_id,
-          p.user2_id
-        ])
+        (wp || []).flatMap(p => [p.user1_id, p.user2_id])
       );
 
       map[w.id] = (wi || [])
@@ -617,55 +501,40 @@ function Workshops({ currentUser }) {
 
   function formatGermanDateTime(iso) {
     const start = new Date(iso);
-    const end = new Date(
-      start.getTime() +
-        60 * 60 * 1000
-    );
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
 
-    const date =
-      new Intl.DateTimeFormat("de-DE", {
-        timeZone: "Europe/Berlin",
-        weekday: "long",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric"
-      }).format(start);
+    const date = new Intl.DateTimeFormat("de-DE", {
+      timeZone: "Europe/Berlin",
+      weekday: "long",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    }).format(start);
 
-    const time =
-      new Intl.DateTimeFormat("de-DE", {
-        timeZone: "Europe/Berlin",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-      });
+    const time = new Intl.DateTimeFormat("de-DE", {
+      timeZone: "Europe/Berlin",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    });
 
     return {
       date,
-      time: `${time.format(
-        start
-      )}–${time.format(end)} Uhr`
+      time: `${time.format(start)}–${time.format(end)} Uhr`
     };
   }
 
   async function toggleInterest(workshopId) {
     if (myPairs.has(workshopId)) return;
 
-    const interested =
-      myInterests.has(workshopId);
+    const interested = myInterests.has(workshopId);
 
     if (interested) {
-      const { error } =
-        await supabase
-          .from("workshop_interests")
-          .delete()
-          .eq(
-            "user_id",
-            currentUser
-          )
-          .eq(
-            "workshop_id",
-            workshopId
-          );
+      const { error } = await supabase
+        .from("workshop_interests")
+        .delete()
+        .eq("user_id", currentUser)
+        .eq("workshop_id", workshopId);
 
       if (error) {
         return alert(error.message);
@@ -681,8 +550,7 @@ function Workshops({ currentUser }) {
       return;
     }
 
-    const level =
-      selectedLevels[workshopId];
+    const level = selectedLevels[workshopId];
 
     if (!level) {
       return alert(
@@ -690,74 +558,54 @@ function Workshops({ currentUser }) {
       );
     }
 
-    const { error } =
-      await supabase
-        .from("workshop_interests")
-        .insert({
-          user_id: currentUser,
-          workshop_id: workshopId,
-          level
-        });
+    const { error } = await supabase
+      .from("workshop_interests")
+      .insert({
+        user_id: currentUser,
+        workshop_id: workshopId,
+        level
+      });
 
     if (error) {
       return alert(error.message);
     }
 
-    setMyInterests(
-      prev =>
-        new Set(prev).add(workshopId)
-    );
-
+    setMyInterests(prev => new Set(prev).add(workshopId));
     await load();
   }
 
-  async function contactForWorkshop(
-    workshopId,
-    recipientId
-  ) {
+  async function contactForWorkshop(workshopId, recipientId) {
     if (myPairs.has(workshopId)) return;
 
-    const { error } =
-      await supabase
-        .from("contact_requests")
-        .insert({
-          requester_id: currentUser,
-          recipient_id: recipientId,
-          workshop_id: workshopId,
-          status: "pending"
-        });
+    const { error } = await supabase
+      .from("contact_requests")
+      .insert({
+        requester_id: currentUser,
+        recipient_id: recipientId,
+        workshop_id: workshopId,
+        status: "pending"
+      });
 
     if (error) {
       return alert(
-        error.message.includes(
-          "duplicate"
-        ) ||
-          error.code === "23505"
+        error.message.includes("duplicate") || error.code === "23505"
           ? "Für diesen Workshop besteht bereits eine Anfrage."
           : error.message
       );
     }
 
-    alert(
-      "Kontaktanfrage für diesen Workshop gesendet 💬"
-    );
+    alert("Kontaktanfrage für diesen Workshop gesendet 💬");
   }
 
   async function dissolvePair(workshopId) {
-    const { data: pair, error } =
-      await supabase
-        .from("workshop_pairs")
-        .select(
-          "user1_id,user2_id"
-        )
-        .eq(
-          "workshop_id",
-          workshopId
-        )
-        .or(
-          `user1_id.eq.${currentUser},user2_id.eq.${currentUser}`
-        )
-        .maybeSingle();
+    const { data: pair, error } = await supabase
+      .from("workshop_pairs")
+      .select("user1_id,user2_id")
+      .eq("workshop_id", workshopId)
+      .or(
+        `user1_id.eq.${currentUser},user2_id.eq.${currentUser}`
+      )
+      .maybeSingle();
 
     if (error) {
       return alert(error.message);
@@ -778,17 +626,13 @@ function Workshops({ currentUser }) {
         ? pair.user2_id
         : pair.user1_id;
 
-    const { error: deleteError } =
-      await supabase
-        .from("workshop_pairs")
-        .delete()
-        .eq(
-          "workshop_id",
-          workshopId
-        )
-        .or(
-          `user1_id.eq.${currentUser},user2_id.eq.${currentUser}`
-        );
+    const { error: deleteError } = await supabase
+      .from("workshop_pairs")
+      .delete()
+      .eq("workshop_id", workshopId)
+      .or(
+        `user1_id.eq.${currentUser},user2_id.eq.${currentUser}`
+      );
 
     if (deleteError) {
       return alert(deleteError.message);
@@ -796,20 +640,12 @@ function Workshops({ currentUser }) {
 
     await supabase
       .from("contact_requests")
-      .update({
-        status: "cancelled"
-      })
-      .eq(
-        "workshop_id",
-        workshopId
-      )
+      .update({ status: "cancelled" })
+      .eq("workshop_id", workshopId)
       .or(
         `and(requester_id.eq.${currentUser},recipient_id.eq.${otherUserId}),and(requester_id.eq.${otherUserId},recipient_id.eq.${currentUser})`
       )
-      .eq(
-        "status",
-        "accepted"
-      );
+      .eq("status", "accepted");
 
     await load();
   }
@@ -820,15 +656,13 @@ function Workshops({ currentUser }) {
         <h2>Sonntags-Workshops</h2>
 
         <p>
-          Finde einen Tanzpartner für genau den
-          Workshop, an dem du teilnehmen möchtest.
+          Finde einen Tanzpartner für genau den Workshop,
+          an dem du teilnehmen möchtest.
         </p>
       </div>
 
       {busy ? (
-        <div className="card">
-          Workshops werden geladen…
-        </div>
+        <div className="card">Workshops werden geladen…</div>
       ) : workshops.length === 0 ? (
         <div className="card">
           Noch keine Workshops eingetragen.
@@ -836,25 +670,13 @@ function Workshops({ currentUser }) {
       ) : (
         <div className="grid">
           {workshops.map(w => {
-            const dt =
-              formatGermanDateTime(
-                w.starts_at
-              );
-
-            const interested =
-              myInterests.has(w.id);
-
-            const paired =
-              myPairs.has(w.id);
-
-            const openSeekers =
-              seekers[w.id] || [];
+            const dt = formatGermanDateTime(w.starts_at);
+            const interested = myInterests.has(w.id);
+            const paired = myPairs.has(w.id);
+            const openSeekers = seekers[w.id] || [];
 
             return (
-              <article
-                className="profile-card"
-                key={w.id}
-              >
+              <article className="profile-card" key={w.id}>
                 <div className="workshop-date">
                   🎟️ {dt.date}
                 </div>
@@ -862,9 +684,7 @@ function Workshops({ currentUser }) {
                 <h3>{w.title}</h3>
 
                 <div className="muted">
-                  💃{" "}
-                  {w.dance_styles?.name ||
-                    w.title}
+                  💃 {w.dance_styles?.name || w.title}
                 </div>
 
                 <p>
@@ -872,22 +692,16 @@ function Workshops({ currentUser }) {
                 </p>
 
                 <div className="muted">
-                  📍{" "}
-                  {w.location ||
-                    "Hazienda im Sonnenhof Aspach"}
+                  📍 {w.location || "Hazienda im Sonnenhof Aspach"}
                 </div>
 
                 {paired ? (
                   <div className="notice success">
-                    <div>
-                      ✅ Tanzpartner gefunden
-                    </div>
+                    <div>✅ Tanzpartner gefunden</div>
 
                     <button
                       className="ghost"
-                      onClick={() =>
-                        dissolvePair(w.id)
-                      }
+                      onClick={() => dissolvePair(w.id)}
                     >
                       Tanzpartnerschaft auflösen
                     </button>
@@ -897,33 +711,19 @@ function Workshops({ currentUser }) {
                     <div className="actions">
                       {!interested && (
                         <select
-                          value={
-                            selectedLevels[
-                              w.id
-                            ] || ""
-                          }
+                          value={selectedLevels[w.id] || ""}
                           onChange={e =>
-                            setSelectedLevels(
-                              prev => ({
-                                ...prev,
-                                [w.id]:
-                                  e.target.value
-                              })
-                            )
+                            setSelectedLevels(prev => ({
+                              ...prev,
+                              [w.id]: e.target.value
+                            }))
                           }
                         >
-                          <option value="">
-                            ⭐ Niveau wählen
-                          </option>
-
-                          <option value="Anfänger">
-                            Anfänger
-                          </option>
-
+                          <option value="">⭐ Niveau wählen</option>
+                          <option value="Anfänger">Anfänger</option>
                           <option value="Mittelstufe">
                             Mittelstufe
                           </option>
-
                           <option value="Fortgeschritten">
                             Fortgeschritten
                           </option>
@@ -931,14 +731,8 @@ function Workshops({ currentUser }) {
                       )}
 
                       <button
-                        className={
-                          interested
-                            ? "primary"
-                            : "ghost"
-                        }
-                        onClick={() =>
-                          toggleInterest(w.id)
-                        }
+                        className={interested ? "primary" : "ghost"}
+                        onClick={() => toggleInterest(w.id)}
                       >
                         {interested
                           ? "✓ Tanzpartner gesucht"
@@ -957,24 +751,16 @@ function Workshops({ currentUser }) {
                       )}
                     </div>
 
-                    {openSeekers.length >
-                      0 && (
+                    {openSeekers.length > 0 && (
                       <div className="seekers">
-                        <h4>
-                          👥 Sucht noch einen Tanzpartner
-                        </h4>
+                        <h4>👥 Sucht noch einen Tanzpartner</h4>
 
                         {openSeekers.map(p => (
-                          <div
-                            className="row seeker"
-                            key={p.id}
-                          >
+                          <div className="row seeker" key={p.id}>
                             <div>
                               <b>
                                 {p.display_name}
-                                {p.age
-                                  ? `, ${p.age}`
-                                  : ""}
+                                {p.age ? `, ${p.age}` : ""}
                               </b>
 
                               <div className="muted">
@@ -985,9 +771,7 @@ function Workshops({ currentUser }) {
                                     : null
                                 ]
                                   .filter(Boolean)
-                                  .join(
-                                    " · "
-                                  )}
+                                  .join(" · ")}
                               </div>
 
                               <div className="muted">
@@ -1000,10 +784,7 @@ function Workshops({ currentUser }) {
                             <button
                               className="primary"
                               onClick={() =>
-                                contactForWorkshop(
-                                  w.id,
-                                  p.id
-                                )
+                                contactForWorkshop(w.id, p.id)
                               }
                             >
                               Kontakt aufnehmen
@@ -1013,14 +794,12 @@ function Workshops({ currentUser }) {
                       </div>
                     )}
 
-                    {interested &&
-                      openSeekers.length ===
-                        0 && (
-                        <div className="muted">
-                          Noch keine weiteren offenen
-                          Suchenden für diesen Workshop.
-                        </div>
-                      )}
+                    {interested && openSeekers.length === 0 && (
+                      <div className="muted">
+                        Noch keine weiteren offenen Suchenden
+                        für diesen Workshop.
+                      </div>
+                    )}
                   </>
                 )}
               </article>
@@ -1038,22 +817,16 @@ function ProfileEditor({
   profileLoading,
   setProfile
 }) {
-  const [form, setForm] = useState(
-    profile || {}
-  );
+  const [form, setForm] = useState(profile || {});
 
-  const [contact, setContact] =
-    useState({
-      email: user.email || "",
-      phone: "",
-      share_contacts: false
-    });
+  const [contact, setContact] = useState({
+    email: user.email || "",
+    phone: "",
+    share_contacts: false
+  });
 
-  const [busy, setBusy] =
-    useState(false);
-
-  const [contactLoading, setContactLoading] =
-    useState(true);
+  const [busy, setBusy] = useState(false);
+  const [contactLoading, setContactLoading] = useState(true);
 
   useEffect(() => {
     setForm(profile || {});
@@ -1065,17 +838,11 @@ function ProfileEditor({
     async function loadContact() {
       setContactLoading(true);
 
-      const { data, error } =
-        await supabase
-          .from("contact_details")
-          .select(
-            "email,phone,share_contacts"
-          )
-          .eq(
-            "user_id",
-            user.id
-          )
-          .maybeSingle();
+      const { data, error } = await supabase
+        .from("contact_details")
+        .select("email,phone,share_contacts")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
       if (!mounted) return;
 
@@ -1126,44 +893,25 @@ function ProfileEditor({
     setBusy(true);
 
     try {
-      const displayName =
-        (
-          form.display_name ||
-          user.user_metadata
-            ?.display_name ||
-          "Tanzpartner"
-        ).trim();
+      const displayName = (
+        form.display_name ||
+        user.user_metadata?.display_name ||
+        "Tanzpartner"
+      ).trim();
 
       const payload = {
         id: user.id,
-        display_name:
-          displayName || "Tanzpartner",
-        age: form.age
-          ? Number(form.age)
-          : null,
-        gender:
-          form.gender || null,
-        height_cm:
-          form.height_cm
-            ? Number(form.height_cm)
-            : null,
-        is_visible:
-          form.is_visible !== false,
-        is_blocked:
-          profile?.is_blocked === true
+        display_name: displayName || "Tanzpartner",
+        age: form.age ? Number(form.age) : null,
+        gender: form.gender || null,
+        height_cm: form.height_cm ? Number(form.height_cm) : null,
+        is_visible: form.is_visible !== false,
+        is_blocked: profile?.is_blocked === true
       };
 
-      const {
-        data,
-        error
-      } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
-        .upsert(
-          payload,
-          {
-            onConflict: "id"
-          }
-        )
+        .upsert(payload, { onConflict: "id" })
         .select("*")
         .single();
 
@@ -1176,32 +924,14 @@ function ProfileEditor({
 
       const contactPayload = {
         user_id: user.id,
-        email:
-          (
-            contact.email ||
-            user.email ||
-            ""
-          ).trim() || null,
-        phone:
-          (
-            contact.phone ||
-            ""
-          ).trim() || null,
-        share_contacts:
-          contact.share_contacts ===
-          true
+        email: (contact.email || user.email || "").trim() || null,
+        phone: (contact.phone || "").trim() || null,
+        share_contacts: contact.share_contacts === true
       };
 
-      const {
-        error: contactError
-      } = await supabase
+      const { error: contactError } = await supabase
         .from("contact_details")
-        .upsert(
-          contactPayload,
-          {
-            onConflict: "user_id"
-          }
-        );
+        .upsert(contactPayload, { onConflict: "user_id" });
 
       if (contactError) {
         throw new Error(
@@ -1213,14 +943,9 @@ function ProfileEditor({
       setForm(data);
       setProfile(data);
 
-      alert(
-        "Profil gespeichert ✅"
-      );
+      alert("Profil gespeichert ✅");
     } catch (err) {
-      alert(
-        err.message ||
-          "Unbekannter Fehler beim Speichern."
-      );
+      alert(err.message || "Unbekannter Fehler beim Speichern.");
     } finally {
       setBusy(false);
     }
@@ -1231,9 +956,7 @@ function ProfileEditor({
       <section>
         <h2>Mein Profil</h2>
 
-        <div className="card">
-          Profil wird geladen…
-        </div>
+        <div className="card">Profil wird geladen…</div>
       </section>
     );
   }
@@ -1242,22 +965,14 @@ function ProfileEditor({
     <section>
       <h2>Mein Profil</h2>
 
-      <form
-        className="card form"
-        onSubmit={save}
-      >
+      <form className="card form" onSubmit={save}>
         <label>
           Anzeigename
 
           <input
-            value={
-              form.display_name || ""
-            }
+            value={form.display_name || ""}
             onChange={e =>
-              change(
-                "display_name",
-                e.target.value
-              )
+              change("display_name", e.target.value)
             }
             required
           />
@@ -1271,12 +986,7 @@ function ProfileEditor({
             min="18"
             max="100"
             value={form.age || ""}
-            onChange={e =>
-              change(
-                "age",
-                e.target.value
-              )
-            }
+            onChange={e => change("age", e.target.value)}
           />
         </label>
 
@@ -1284,53 +994,27 @@ function ProfileEditor({
           Geschlecht
 
           <select
-            value={
-              form.gender || ""
-            }
-            onChange={e =>
-              change(
-                "gender",
-                e.target.value
-              )
-            }
+            value={form.gender || ""}
+            onChange={e => change("gender", e.target.value)}
           >
-            <option value="">
-              Bitte auswählen
-            </option>
-
-            <option value="Frau">
-              Frau
-            </option>
-
-            <option value="Mann">
-              Mann
-            </option>
-
-            <option value="Divers">
-              Divers
-            </option>
+            <option value="">Bitte auswählen</option>
+            <option value="Frau">Frau</option>
+            <option value="Mann">Mann</option>
+            <option value="Divers">Divers</option>
           </select>
         </label>
 
         <label>
-          Größe in cm{" "}
-          <span className="small">
-            (optional)
-          </span>
+          Größe in cm <span className="small">(optional)</span>
 
           <input
             type="number"
             min="120"
             max="230"
             step="1"
-            value={
-              form.height_cm || ""
-            }
+            value={form.height_cm || ""}
             onChange={e =>
-              change(
-                "height_cm",
-                e.target.value
-              )
+              change("height_cm", e.target.value)
             }
             placeholder="z. B. 172"
           />
@@ -1341,9 +1025,8 @@ function ProfileEditor({
         <h3>Kontaktdaten</h3>
 
         <p className="muted">
-          Diese Daten sind niemals öffentlich.
-          Sie werden erst sichtbar, wenn ihr
-          euch gegenseitig freigebt.
+          Diese Daten sind niemals öffentlich. Sie werden erst
+          sichtbar, wenn ihr euch gegenseitig freigebt.
         </p>
 
         {contactLoading ? (
@@ -1354,41 +1037,26 @@ function ProfileEditor({
           <>
             <label>
               E-Mail für den Kontakt{" "}
-              <span className="small">
-                (optional)
-              </span>
+              <span className="small">(optional)</span>
 
               <input
                 type="email"
-                value={
-                  contact.email || ""
-                }
+                value={contact.email || ""}
                 onChange={e =>
-                  changeContact(
-                    "email",
-                    e.target.value
-                  )
+                  changeContact("email", e.target.value)
                 }
                 placeholder="name@beispiel.de"
               />
             </label>
 
             <label>
-              Telefon{" "}
-              <span className="small">
-                (optional)
-              </span>
+              Telefon <span className="small">(optional)</span>
 
               <input
                 type="tel"
-                value={
-                  contact.phone || ""
-                }
+                value={contact.phone || ""}
                 onChange={e =>
-                  changeContact(
-                    "phone",
-                    e.target.value
-                  )
+                  changeContact("phone", e.target.value)
                 }
                 placeholder="z. B. 0170 1234567"
               />
@@ -1397,20 +1065,14 @@ function ProfileEditor({
             <label className="check">
               <input
                 type="checkbox"
-                checked={
-                  contact.share_contacts ===
-                  true
-                }
+                checked={contact.share_contacts === true}
                 onChange={e =>
-                  changeContact(
-                    "share_contacts",
-                    e.target.checked
-                  )
+                  changeContact("share_contacts", e.target.checked)
                 }
               />
 
-              Ich bin bereit, meine Kontaktdaten
-              mit meinem Tanzpartner zu teilen
+              Ich bin bereit, meine Kontaktdaten mit meinem
+              Tanzpartner zu teilen
             </label>
           </>
         )}
@@ -1418,14 +1080,9 @@ function ProfileEditor({
         <label className="check">
           <input
             type="checkbox"
-            checked={
-              form.is_visible !== false
-            }
+            checked={form.is_visible !== false}
             onChange={e =>
-              change(
-                "is_visible",
-                e.target.checked
-              )
+              change("is_visible", e.target.checked)
             }
           />
 
@@ -1435,13 +1092,9 @@ function ProfileEditor({
         <button
           type="submit"
           className="primary wide"
-          disabled={
-            busy || contactLoading
-          }
+          disabled={busy || contactLoading}
         >
-          {busy
-            ? "Speichern..."
-            : "Profil speichern"}
+          {busy ? "Speichern..." : "Profil speichern"}
         </button>
       </form>
     </section>
@@ -1449,8 +1102,7 @@ function ProfileEditor({
 }
 
 function Favorites({ userId }) {
-  const [items, setItems] =
-    useState([]);
+  const [items, setItems] = useState([]);
 
   useEffect(() => {
     supabase
@@ -1461,10 +1113,7 @@ function Favorites({ userId }) {
       .eq("user_id", userId)
       .then(({ data, error }) => {
         if (error) {
-          console.error(
-            "Favoriten Fehler:",
-            error
-          );
+          console.error("Favoriten Fehler:", error);
           return;
         }
 
@@ -1474,53 +1123,32 @@ function Favorites({ userId }) {
 
   return (
     <section>
-      <h2>
-        Meine Favoriten ❤️
-      </h2>
+      <h2>Meine Favoriten ❤️</h2>
 
       {items.length ? (
         <div className="grid">
           {items.map(x => (
-            <article
-              className="profile-card"
-              key={x.favorite_user_id}
-            >
-              <div className="avatar">
-                💃
-              </div>
+            <article className="profile-card" key={x.favorite_user_id}>
+              <div className="avatar">💃</div>
 
               <h3>
                 {x.profiles?.display_name}
-
-                {x.profiles?.age
-                  ? `, ${x.profiles.age}`
-                  : ""}
+                {x.profiles?.age ? `, ${x.profiles.age}` : ""}
               </h3>
             </article>
           ))}
         </div>
       ) : (
-        <div className="card">
-          Noch keine Favoriten.
-        </div>
+        <div className="card">Noch keine Favoriten.</div>
       )}
     </section>
   );
 }
 
-function Chat({
-  userId,
-  contact,
-  onBack
-}) {
-  const [messages, setMessages] =
-    useState([]);
-
-  const [body, setBody] =
-    useState("");
-
-  const [busy, setBusy] =
-    useState(false);
+function Chat({ userId, contact, onBack }) {
+  const [messages, setMessages] = useState([]);
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const otherId =
     contact.requester_id === userId
@@ -1541,24 +1169,13 @@ function Chat({
       .or(
         `and(sender_id.eq.${userId},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${userId})`
       )
-      .order(
-        "created_at",
-        {
-          ascending: true
-        }
-      );
+      .order("created_at", { ascending: true });
 
     if (contact.workshop_id) {
-      q = q.eq(
-        "workshop_id",
-        contact.workshop_id
-      );
+      q = q.eq("workshop_id", contact.workshop_id);
     }
 
-    const {
-      data,
-      error
-    } = await q;
+    const { data, error } = await q;
 
     if (error) {
       alert(error.message);
@@ -1570,90 +1187,59 @@ function Chat({
   useEffect(() => {
     loadMessages();
 
-    const channel =
-      supabase
-        .channel(
-          `chat-${contact.id}`
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "messages"
-          },
-          payload => {
-            const m = payload.new;
+    const channel = supabase
+      .channel(`chat-${contact.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages"
+        },
+        payload => {
+          const m = payload.new;
 
+          if (
+            (m.sender_id === userId &&
+              m.recipient_id === otherId) ||
+            (m.sender_id === otherId &&
+              m.recipient_id === userId)
+          ) {
             if (
-              (
-                m.sender_id === userId &&
-                m.recipient_id ===
-                  otherId
-              ) ||
-              (
-                m.sender_id === otherId &&
-                m.recipient_id ===
-                  userId
-              )
+              !contact.workshop_id ||
+              m.workshop_id === contact.workshop_id
             ) {
-              if (
-                !contact.workshop_id ||
-                m.workshop_id ===
-                  contact.workshop_id
-              ) {
-                setMessages(
-                  prev =>
-                    prev.some(
-                      x =>
-                        x.id === m.id
-                    )
-                      ? prev
-                      : [
-                          ...prev,
-                          m
-                        ]
-                );
-              }
+              setMessages(prev =>
+                prev.some(x => x.id === m.id)
+                  ? prev
+                  : [...prev, m]
+              );
             }
           }
-        )
-        .subscribe();
+        }
+      )
+      .subscribe();
 
     return () => {
-      supabase.removeChannel(
-        channel
-      );
+      supabase.removeChannel(channel);
     };
-  }, [
-    contact.id,
-    contact.workshop_id,
-    otherId,
-    userId
-  ]);
+  }, [contact.id, contact.workshop_id, otherId, userId]);
 
   async function send(e) {
     e.preventDefault();
 
-    const text =
-      body.trim();
+    const text = body.trim();
 
     if (!text || busy) return;
 
     setBusy(true);
 
-    const {
-      data,
-      error
-    } = await supabase
+    const { data, error } = await supabase
       .from("messages")
       .insert({
         sender_id: userId,
-        recipient_id:
-          otherId,
-        workshop_id:
-          contact.workshop_id ||
-          null,
+        recipient_id: otherId,
+        workshop_id: contact.workshop_id || null,
         body: text
       })
       .select()
@@ -1662,9 +1248,7 @@ function Chat({
     if (error) {
       alert(error.message);
     } else {
-      setMessages(
-        prev => [...prev, data]
-      );
+      setMessages(prev => [...prev, data]);
       setBody("");
     }
 
@@ -1673,23 +1257,17 @@ function Chat({
 
   return (
     <section>
-      <button
-        className="ghost"
-        onClick={onBack}
-      >
+      <button className="ghost" onClick={onBack}>
         ← Zurück zu Kontakten
       </button>
 
       <h2>
-        💬 Chat mit{" "}
-        {otherName ||
-          "Tanzpartner/in"}
+        💬 Chat mit {otherName || "Tanzpartner/in"}
       </h2>
 
       {contact.workshop_id && (
         <div className="notice success">
-          👫 Tanzpaar für diesen Workshop
-          gefunden
+          👫 Tanzpaar für diesen Workshop gefunden
         </div>
       )}
 
@@ -1699,62 +1277,36 @@ function Chat({
             <div
               key={m.id}
               className={`chat-message ${
-                m.sender_id ===
-                userId
-                  ? "mine"
-                  : "theirs"
+                m.sender_id === userId ? "mine" : "theirs"
               }`}
             >
-              <div>
-                {m.body}
-              </div>
+              <div>{m.body}</div>
 
               <small>
-                {new Intl.DateTimeFormat(
-                  "de-DE",
-                  {
-                    hour: "2-digit",
-                    minute: "2-digit"
-                  }
-                ).format(
-                  new Date(
-                    m.created_at
-                  )
-                )}
+                {new Intl.DateTimeFormat("de-DE", {
+                  hour: "2-digit",
+                  minute: "2-digit"
+                }).format(new Date(m.created_at))}
               </small>
             </div>
           ))
         ) : (
           <div className="muted">
-            Noch keine Nachricht.
-            Schreib einfach
-            „Hallo“ 👋
+            Noch keine Nachricht. Schreib einfach „Hallo“ 👋
           </div>
         )}
       </div>
 
-      <form
-        className="chat-form"
-        onSubmit={send}
-      >
+      <form className="chat-form" onSubmit={send}>
         <input
           value={body}
-          onChange={e =>
-            setBody(
-              e.target.value
-            )
-          }
+          onChange={e => setBody(e.target.value)}
           placeholder="Nachricht schreiben…"
           maxLength="1000"
         />
 
-        <button
-          className="primary"
-          disabled={busy}
-        >
-          {busy
-            ? "…"
-            : "Senden"}
+        <button className="primary" disabled={busy}>
+          {busy ? "…" : "Senden"}
         </button>
       </form>
     </section>
@@ -1767,39 +1319,28 @@ function ReportModal({
   reportedName,
   onClose
 }) {
-  const [reason, setReason] =
-    useState("");
-
-  const [details, setDetails] =
-    useState("");
-
-  const [busy, setBusy] =
-    useState(false);
+  const [reason, setReason] = useState("");
+  const [details, setDetails] = useState("");
+  const [busy, setBusy] = useState(false);
 
   async function submit(e) {
     e.preventDefault();
 
     if (!reason) {
-      return alert(
-        "Bitte wähle einen Grund aus."
-      );
+      return alert("Bitte wähle einen Grund aus.");
     }
 
     setBusy(true);
 
-    const { error } =
-      await supabase
-        .from("reports")
-        .insert({
-          reporter_id: userId,
-          reported_user_id:
-            reportedUserId,
-          reason,
-          details:
-            details.trim() ||
-            null,
-          status: "pending"
-        });
+    const { error } = await supabase
+      .from("reports")
+      .insert({
+        reporter_id: userId,
+        reported_user_id: reportedUserId,
+        reason,
+        details: details.trim() || null,
+        status: "pending"
+      });
 
     if (error) {
       alert(error.message);
@@ -1814,83 +1355,43 @@ function ReportModal({
   }
 
   return (
-    <div
-      className="card"
-      style={{
-        marginTop: "12px"
-      }}
-    >
-      <h3>
-        🚨 Nutzer melden
-      </h3>
+    <div className="card report-modal">
+      <h3>🚨 Nutzer melden</h3>
 
       <p className="muted">
-        Du möchtest{" "}
-        <b>
-          {reportedName ||
-            "diesen Nutzer"}
-        </b>{" "}
-        melden? Die Meldung geht
-        ausschließlich an den Admin.
-        Es wird nichts automatisch
-        gelöscht.
+        Du möchtest <b>{reportedName || "diesen Nutzer"}</b>{" "}
+        melden? Die Meldung geht ausschließlich an den Admin.
+        Es wird nichts automatisch gelöscht.
       </p>
 
-      <form
-        className="form"
-        onSubmit={submit}
-      >
+      <form className="form" onSubmit={submit}>
         <label>
           Grund
 
           <select
             value={reason}
-            onChange={e =>
-              setReason(
-                e.target.value
-              )
-            }
+            onChange={e => setReason(e.target.value)}
             required
           >
-            <option value="">
-              Bitte auswählen
-            </option>
-
+            <option value="">Bitte auswählen</option>
             <option value="Unangemessenes Verhalten">
               Unangemessenes Verhalten
             </option>
-
-            <option value="Belästigung">
-              Belästigung
-            </option>
-
-            <option value="Falsche Angaben">
-              Falsche Angaben
-            </option>
-
+            <option value="Belästigung">Belästigung</option>
+            <option value="Falsche Angaben">Falsche Angaben</option>
             <option value="Spam oder Werbung">
               Spam oder Werbung
             </option>
-
-            <option value="Sonstiges">
-              Sonstiges
-            </option>
+            <option value="Sonstiges">Sonstiges</option>
           </select>
         </label>
 
         <label>
-          Details{" "}
-          <span className="small">
-            (optional)
-          </span>
+          Details <span className="small">(optional)</span>
 
           <textarea
             value={details}
-            onChange={e =>
-              setDetails(
-                e.target.value
-              )
-            }
+            onChange={e => setDetails(e.target.value)}
             placeholder="Was ist passiert?"
             maxLength={1000}
             rows={4}
@@ -1903,9 +1404,7 @@ function ReportModal({
             className="primary"
             disabled={busy}
           >
-            {busy
-              ? "Wird gesendet…"
-              : "Meldung senden"}
+            {busy ? "Wird gesendet…" : "Meldung senden"}
           </button>
 
           <button
@@ -1923,31 +1422,17 @@ function ReportModal({
 }
 
 function Contacts({ userId }) {
-  const [items, setItems] =
-    useState([]);
-
-  const [chat, setChat] =
-    useState(null);
-
-  const [myShare, setMyShare] =
-    useState(false);
-
-  const [sharedDetails, setSharedDetails] =
-    useState({});
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [reportTarget, setReportTarget] =
-    useState(null);
+  const [items, setItems] = useState([]);
+  const [chat, setChat] = useState(null);
+  const [myShare, setMyShare] = useState(false);
+  const [sharedDetails, setSharedDetails] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [reportTarget, setReportTarget] = useState(null);
 
   async function load() {
     setLoading(true);
 
-    const {
-      data: requests,
-      error
-    } = await supabase
+    const { data: requests, error } = await supabase
       .from("contact_requests")
       .select(
         `
@@ -1959,12 +1444,7 @@ function Contacts({ userId }) {
       .or(
         `requester_id.eq.${userId},recipient_id.eq.${userId}`
       )
-      .order(
-        "created_at",
-        {
-          ascending: false
-        }
-      );
+      .order("created_at", { ascending: false });
 
     if (error) {
       alert(error.message);
@@ -1974,67 +1454,40 @@ function Contacts({ userId }) {
 
     setItems(requests || []);
 
-    const { data: mine } =
-      await supabase
-        .from("contact_details")
-        .select(
-          "share_contacts"
-        )
-        .eq(
-          "user_id",
-          userId
-        )
-        .maybeSingle();
+    const { data: mine } = await supabase
+      .from("contact_details")
+      .select("share_contacts")
+      .eq("user_id", userId)
+      .maybeSingle();
 
-    const ownShare =
-      mine?.share_contacts ===
-      true;
-
+    const ownShare = mine?.share_contacts === true;
     setMyShare(ownShare);
 
-    const accepted =
-      (requests || []).filter(
-        item =>
-          item.status ===
-          "accepted"
-      );
+    const accepted = (requests || []).filter(
+      item => item.status === "accepted"
+    );
 
     const details = {};
 
     for (const item of accepted) {
       const otherId =
-        item.requester_id ===
-        userId
+        item.requester_id === userId
           ? item.recipient_id
           : item.requester_id;
 
-      const {
-        data: contactData,
-        error: contactError
-      } = await supabase
-        .from("contact_details")
-        .select(
-          "email,phone,share_contacts"
-        )
-        .eq(
-          "user_id",
-          otherId
-        )
-        .maybeSingle();
+      const { data: contactData, error: contactError } =
+        await supabase
+          .from("contact_details")
+          .select("email,phone,share_contacts")
+          .eq("user_id", otherId)
+          .maybeSingle();
 
-      if (
-        !contactError &&
-        contactData
-      ) {
-        details[otherId] =
-          contactData;
+      if (!contactError && contactData) {
+        details[otherId] = contactData;
       }
     }
 
-    setSharedDetails(
-      details
-    );
-
+    setSharedDetails(details);
     setLoading(false);
   }
 
@@ -2043,10 +1496,7 @@ function Contacts({ userId }) {
   }, [userId]);
 
   async function accept(id) {
-    const item =
-      items.find(
-        i => i.id === id
-      );
+    const item = items.find(i => i.id === id);
 
     if (!item) return;
 
@@ -2056,41 +1506,28 @@ function Contacts({ userId }) {
         item.recipient_id
       ].sort();
 
-      const {
-        error: pairError
-      } = await supabase
+      const { error: pairError } = await supabase
         .from("workshop_pairs")
         .insert({
-          workshop_id:
-            item.workshop_id,
+          workshop_id: item.workshop_id,
           user1_id: a,
           user2_id: b
         });
 
       if (pairError) {
         return alert(
-          pairError.message.includes(
-            "duplicate"
-          ) ||
-            pairError.code ===
-              "23505"
+          pairError.message.includes("duplicate") ||
+            pairError.code === "23505"
             ? "Für diesen Workshop hat bereits jemand einen Tanzpartner gefunden."
             : pairError.message
         );
       }
     }
 
-    const { error } =
-      await supabase
-        .from("contact_requests")
-        .update({
-          status:
-            "accepted"
-        })
-        .eq(
-          "id",
-          id
-        );
+    const { error } = await supabase
+      .from("contact_requests")
+      .update({ status: "accepted" })
+      .eq("id", id);
 
     if (error) {
       alert(error.message);
@@ -2100,23 +1537,16 @@ function Contacts({ userId }) {
     await load();
   }
 
-  async function setSharing(
-    enabled
-  ) {
-    const { error } =
-      await supabase
-        .from("contact_details")
-        .upsert(
-          {
-            user_id: userId,
-            share_contacts:
-              enabled
-          },
-          {
-            onConflict:
-              "user_id"
-          }
-        );
+  async function setSharing(enabled) {
+    const { error } = await supabase
+      .from("contact_details")
+      .upsert(
+        {
+          user_id: userId,
+          share_contacts: enabled
+        },
+        { onConflict: "user_id" }
+      );
 
     if (error) {
       alert(error.message);
@@ -2142,29 +1572,21 @@ function Contacts({ userId }) {
 
   return (
     <section>
-      <h2>
-        Kontakte 💬
-      </h2>
+      <h2>Kontakte 💬</h2>
 
       <div className="card">
-        <b>
-          🔐 Kontaktdaten
-        </b>
+        <b>🔐 Kontaktdaten</b>
 
         <p className="muted">
-          Deine Telefonnummer und
-          E-Mail-Adresse werden erst
-          sichtbar, wenn du und dein
-          Tanzpartner sie beide
+          Deine Telefonnummer und E-Mail-Adresse werden erst
+          sichtbar, wenn du und dein Tanzpartner sie beide
           freigegeben habt.
         </p>
 
         {!myShare && (
           <button
             className="primary"
-            onClick={() =>
-              setSharing(true)
-            }
+            onClick={() => setSharing(true)}
           >
             Kontaktdaten freigeben
           </button>
@@ -2172,8 +1594,7 @@ function Contacts({ userId }) {
 
         {myShare && (
           <div className="notice success">
-            ✓ Du hast deine Kontaktdaten
-            freigegeben.
+            ✓ Du hast deine Kontaktdaten freigegeben.
           </div>
         )}
       </div>
@@ -2181,56 +1602,36 @@ function Contacts({ userId }) {
       {reportTarget && (
         <ReportModal
           userId={userId}
-          reportedUserId={
-            reportTarget.id
-          }
-          reportedName={
-            reportTarget.name
-          }
-          onClose={() =>
-            setReportTarget(null)
-          }
+          reportedUserId={reportTarget.id}
+          reportedName={reportTarget.name}
+          onClose={() => setReportTarget(null)}
         />
       )}
 
       {loading ? (
-        <div className="card">
-          Kontakte werden geladen…
-        </div>
+        <div className="card">Kontakte werden geladen…</div>
       ) : items.length ? (
         items.map(item => {
-          const incoming =
-            item.recipient_id ===
-            userId;
-
+          const incoming = item.recipient_id === userId;
           const other = incoming
             ? item.requester
             : item.recipient;
 
-          const otherId =
-            incoming
-              ? item.requester_id
-              : item.recipient_id;
+          const otherId = incoming
+            ? item.requester_id
+            : item.recipient_id;
 
-          const details =
-            sharedDetails[
-              otherId
-            ];
+          const details = sharedDetails[otherId];
 
           const bothShared =
             myShare === true &&
-            details?.share_contacts ===
-              true;
+            details?.share_contacts === true;
 
           return (
-            <div
-              className="card row"
-              key={item.id}
-            >
+            <div className="card row contact-card" key={item.id}>
               <div>
                 <b>
-                  {other?.display_name ||
-                    "Tanzpartner/in"}
+                  {other?.display_name || "Tanzpartner/in"}
                 </b>
 
                 <div className="muted">
@@ -2238,55 +1639,39 @@ function Contacts({ userId }) {
                     ? "Workshop-Kontakt"
                     : "Kontaktanfrage"}
                   {" · "}
-                  Status:{" "}
-                  {item.status}
+                  Status: {item.status}
                 </div>
 
-                {item.status ===
-                  "accepted" &&
+                {item.status === "accepted" &&
                   (bothShared ? (
                     <div className="notice success">
-                      📞{" "}
-                      {details.phone ||
-                        "Keine Telefonnummer"}
+                      📞 {details.phone || "Keine Telefonnummer"}
                       {" · "}
-                      ✉️{" "}
-                      {details.email ||
-                        "Keine E-Mail-Adresse"}
+                      ✉️ {details.email || "Keine E-Mail-Adresse"}
                     </div>
                   ) : (
                     <div className="muted">
-                      🔐 Kontaktdaten werden
-                      sichtbar, sobald ihr beide
-                      freigegeben habt.
+                      🔐 Kontaktdaten werden sichtbar, sobald ihr
+                      beide freigegeben habt.
                     </div>
                   ))}
               </div>
 
               <div className="actions">
-                {incoming &&
-                  item.status ===
-                    "pending" && (
-                    <button
-                      className="primary"
-                      onClick={() =>
-                        accept(
-                          item.id
-                        )
-                      }
-                    >
-                      Annehmen
-                    </button>
-                  )}
+                {incoming && item.status === "pending" && (
+                  <button
+                    className="primary"
+                    onClick={() => accept(item.id)}
+                  >
+                    Annehmen
+                  </button>
+                )}
 
-                {item.status ===
-                  "accepted" && (
+                {item.status === "accepted" && (
                   <>
                     <button
                       className="primary"
-                      onClick={() =>
-                        setChat(item)
-                      }
+                      onClick={() => setChat(item)}
                     >
                       💬 Chat öffnen
                     </button>
@@ -2296,8 +1681,7 @@ function Contacts({ userId }) {
                       onClick={() =>
                         setReportTarget({
                           id: otherId,
-                          name:
-                            other?.display_name
+                          name: other?.display_name
                         })
                       }
                     >
@@ -2306,78 +1690,43 @@ function Contacts({ userId }) {
                   </>
                 )}
 
-                {incoming &&
-                  item.status ===
-                    "pending" && (
-                    <button
-                      className="ghost"
-                      onClick={async () => {
-                        const {
-                          error
-                        } =
-                          await supabase
-                            .from(
-                              "contact_requests"
-                            )
-                            .update({
-                              status:
-                                "declined"
-                            })
-                            .eq(
-                              "id",
-                              item.id
-                            );
+                {incoming && item.status === "pending" && (
+                  <button
+                    className="ghost"
+                    onClick={async () => {
+                      const { error } = await supabase
+                        .from("contact_requests")
+                        .update({ status: "declined" })
+                        .eq("id", item.id);
 
-                        if (error) {
-                          alert(
-                            error.message
-                          );
-                          return;
-                        }
+                      if (error) {
+                        alert(error.message);
+                        return;
+                      }
 
-                        await load();
-                      }}
-                    >
-                      Ablehnen
-                    </button>
-                  )}
+                      await load();
+                    }}
+                  >
+                    Ablehnen
+                  </button>
+                )}
               </div>
             </div>
           );
         })
       ) : (
-        <div className="card">
-          Noch keine Kontaktanfragen.
-        </div>
+        <div className="card">Noch keine Kontaktanfragen.</div>
       )}
     </section>
   );
 }
 
 function AdminPanel() {
-  const [view, setView] =
-    useState("menu");
-
-  const [users, setUsers] =
-    useState([]);
-
-  const [workshops, setWorkshops] =
-    useState([]);
-
-  const [participants, setParticipants] =
-    useState({});
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [backgroundUploading, setBackgroundUploading] =
-    useState(false);
-
-  const [backgroundVersion, setBackgroundVersion] =
-    useState(Date.now());
-
-  const fileInputRef =
-    useRef(null);
+  const [view, setView] = useState("menu");
+  const [users, setUsers] = useState([]);
+  const [workshops, setWorkshops] = useState([]);
+  const [participants, setParticipants] = useState({});
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (view === "workshops") {
@@ -2388,167 +1737,54 @@ function AdminPanel() {
   async function loadUsers() {
     setLoading(true);
 
-    const {
-      data,
-      error
-    } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
       .select(
         "id,display_name,age,gender,is_visible,is_blocked"
       )
-      .order(
-        "display_name"
-      );
+      .order("display_name");
 
     setLoading(false);
 
     if (error) {
-      alert(
-        "Fehler beim Laden der Nutzer: " +
-          error.message
-      );
+      alert("Fehler beim Laden der Nutzer: " + error.message);
       return;
     }
 
     setUsers(data || []);
   }
 
-  async function toggleBlocked(
-    user
-  ) {
-    const newValue =
-      !user.is_blocked;
+  async function toggleBlocked(user) {
+    const newValue = !user.is_blocked;
 
-    const { error } =
-      await supabase
-        .from("profiles")
-        .update({
-          is_blocked:
-            newValue
-        })
-        .eq(
-          "id",
-          user.id
-        );
+    const { error } = await supabase
+      .from("profiles")
+      .update({ is_blocked: newValue })
+      .eq("id", user.id);
 
     if (error) {
-      alert(
-        "Fehler: " +
-          error.message
-      );
+      alert("Fehler: " + error.message);
       return;
     }
 
     setUsers(prev =>
       prev.map(u =>
         u.id === user.id
-          ? {
-              ...u,
-              is_blocked:
-                newValue
-            }
+          ? { ...u, is_blocked: newValue }
           : u
       )
     );
   }
 
-  async function uploadLoginBackground(
-    event
-  ) {
-    const file =
-      event.target.files?.[0];
-
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      alert(
-        "Bitte wähle eine Bilddatei aus."
-      );
-
-      event.target.value = "";
-      return;
-    }
-
-    const maxSize =
-      10 * 1024 * 1024;
-
-    if (file.size > maxSize) {
-      alert(
-        "Das Bild darf maximal 10 MB groß sein."
-      );
-
-      event.target.value = "";
-      return;
-    }
-
-    setBackgroundUploading(true);
-
-    try {
-      const { error } =
-        await supabase.storage
-          .from("app-images")
-          .upload(
-            "login-bg.png",
-            file,
-            {
-              cacheControl: "0",
-              upsert: true,
-              contentType:
-                file.type
-            }
-          );
-
-      if (error) {
-        throw error;
-      }
-
-      const newVersion =
-        Date.now();
-
-      setBackgroundVersion(
-        newVersion
-      );
-
-      alert(
-        "Login-Hintergrund wurde erfolgreich geändert ✅"
-      );
-    } catch (error) {
-      console.error(
-        "Hintergrundbild Upload Fehler:",
-        error
-      );
-
-      alert(
-        "Das Hintergrundbild konnte nicht hochgeladen werden:\n\n" +
-          error.message
-      );
-    } finally {
-      setBackgroundUploading(false);
-
-      if (event.target) {
-        event.target.value = "";
-      }
-    }
-  }
-
-  function openBackgroundPicker() {
-    fileInputRef.current?.click();
-  }
-
   async function loadWorkshops() {
     setLoading(true);
 
-    const {
-      data,
-      error
-    } = await supabase
+    const { data, error } = await supabase
       .from("workshops")
       .select(
         "id,title,starts_at,location,booking_url"
       )
-      .order(
-        "starts_at"
-      );
+      .order("starts_at");
 
     setLoading(false);
 
@@ -2560,45 +1796,26 @@ function AdminPanel() {
       return;
     }
 
-    setWorkshops(
-      data || []
-    );
+    setWorkshops(data || []);
   }
 
   async function addWorkshop() {
-    const title =
-      prompt(
-        "Name des Workshops:"
-      );
-
+    const title = prompt("Name des Workshops:");
     if (!title) return;
 
-    const date =
-      prompt(
-        "Datum (TT.MM.JJJJ):"
-      );
-
+    const date = prompt("Datum (TT.MM.JJJJ):");
     if (!date) return;
 
-    const time =
-      prompt(
-        "Startzeit (z.B. 16:15):"
-      );
-
+    const time = prompt("Startzeit (z.B. 16:15):");
     if (!time) return;
 
-    const location =
-      prompt("Ort:");
-
+    const location = prompt("Ort:");
     if (!location) return;
 
     const bookingUrl =
-      prompt(
-        "Eventfrog-Link (optional):"
-      ) || "";
+      prompt("Eventfrog-Link (optional):") || "";
 
-    const parts =
-      date.split(".");
+    const parts = date.split(".");
 
     if (parts.length !== 3) {
       alert(
@@ -2607,35 +1824,22 @@ function AdminPanel() {
       return;
     }
 
-    const [
-      day,
-      month,
-      year
-    ] = parts;
+    const [day, month, year] = parts;
 
-    const startsAt =
-      new Date(
-        `${year}-${month.padStart(
-          2,
-          "0"
-        )}-${day.padStart(
-          2,
-          "0"
-        )}T${time}:00`
-      ).toISOString();
+    const startsAt = new Date(
+      `${year}-${month.padStart(2, "0")}-${day.padStart(
+        2,
+        "0"
+      )}T${time}:00`
+    ).toISOString();
 
-    const {
-      data,
-      error
-    } = await supabase
+    const { data, error } = await supabase
       .from("workshops")
       .insert({
         title,
-        starts_at:
-          startsAt,
+        starts_at: startsAt,
         location,
-        booking_url:
-          bookingUrl
+        booking_url: bookingUrl
       })
       .select()
       .single();
@@ -2648,20 +1852,14 @@ function AdminPanel() {
       return;
     }
 
-    alert(
-      "Workshop wurde erfolgreich angelegt."
-    );
+    alert("Workshop wurde erfolgreich angelegt.");
 
     if (data) {
       setWorkshops(prev =>
         [...prev, data].sort(
           (a, b) =>
-            new Date(
-              a.starts_at
-            ) -
-            new Date(
-              b.starts_at
-            )
+            new Date(a.starts_at) -
+            new Date(b.starts_at)
         )
       );
     } else {
@@ -2669,75 +1867,52 @@ function AdminPanel() {
     }
   }
 
-  async function editWorkshop(
-    workshop
-  ) {
-    const title =
-      prompt(
-        "Name des Workshops:",
-        workshop.title
-      );
+  async function editWorkshop(workshop) {
+    const title = prompt(
+      "Name des Workshops:",
+      workshop.title
+    );
 
     if (!title) return;
 
-    const dateObj =
-      new Date(
-        workshop.starts_at
-      );
+    const dateObj = new Date(workshop.starts_at);
 
-    const date =
-      prompt(
-        "Datum (TT.MM.JJJJ):",
-        `${String(
-          dateObj.getDate()
-        ).padStart(
-          2,
-          "0"
-        )}.${String(
-          dateObj.getMonth() + 1
-        ).padStart(
-          2,
-          "0"
-        )}.${dateObj.getFullYear()}`
-      );
+    const date = prompt(
+      "Datum (TT.MM.JJJJ):",
+      `${String(dateObj.getDate()).padStart(2, "0")}.${String(
+        dateObj.getMonth() + 1
+      ).padStart(2, "0")}.${dateObj.getFullYear()}`
+    );
 
     if (!date) return;
 
-    const time =
-      prompt(
-        "Startzeit (z.B. 16:15):",
-        `${String(
-          dateObj.getHours()
-        ).padStart(
-          2,
-          "0"
-        )}:${String(
-          dateObj.getMinutes()
-        ).padStart(
-          2,
-          "0"
-        )}`
-      );
+    const time = prompt(
+      "Startzeit (z.B. 16:15):",
+      `${String(dateObj.getHours()).padStart(
+        2,
+        "0"
+      )}:${String(dateObj.getMinutes()).padStart(
+        2,
+        "0"
+      )}`
+    );
 
     if (!time) return;
 
-    const location =
-      prompt(
-        "Ort:",
-        workshop.location || ""
-      );
+    const location = prompt(
+      "Ort:",
+      workshop.location || ""
+    );
 
     if (!location) return;
 
     const bookingUrl =
       prompt(
         "Eventfrog-Link (optional):",
-        workshop.booking_url ||
-          ""
+        workshop.booking_url || ""
       ) || "";
 
-    const parts =
-      date.split(".");
+    const parts = date.split(".");
 
     if (parts.length !== 3) {
       alert(
@@ -2746,11 +1921,7 @@ function AdminPanel() {
       return;
     }
 
-    const [
-      day,
-      month,
-      year
-    ] = parts;
+    const [day, month, year] = parts;
 
     const startsAt =
       `${year}-${month.padStart(
@@ -2761,21 +1932,15 @@ function AdminPanel() {
         "0"
       )}T${time}:00`;
 
-    const { error } =
-      await supabase
-        .from("workshops")
-        .update({
-          title,
-          starts_at:
-            startsAt,
-          location,
-          booking_url:
-            bookingUrl
-        })
-        .eq(
-          "id",
-          workshop.id
-        );
+    const { error } = await supabase
+      .from("workshops")
+      .update({
+        title,
+        starts_at: startsAt,
+        location,
+        booking_url: bookingUrl
+      })
+      .eq("id", workshop.id);
 
     if (error) {
       alert(
@@ -2785,31 +1950,21 @@ function AdminPanel() {
       return;
     }
 
-    alert(
-      "Workshop wurde erfolgreich geändert."
-    );
-
+    alert("Workshop wurde erfolgreich geändert.");
     await loadWorkshops();
   }
 
-  async function deleteWorkshop(
-    workshop
-  ) {
-    const confirmed =
-      confirm(
-        `Workshop "${workshop.title}" wirklich löschen?`
-      );
+  async function deleteWorkshop(workshop) {
+    const confirmed = confirm(
+      `Workshop "${workshop.title}" wirklich löschen?`
+    );
 
     if (!confirmed) return;
 
-    const { error } =
-      await supabase
-        .from("workshops")
-        .delete()
-        .eq(
-          "id",
-          workshop.id
-        );
+    const { error } = await supabase
+      .from("workshops")
+      .delete()
+      .eq("id", workshop.id);
 
     if (error) {
       alert(
@@ -2819,30 +1974,15 @@ function AdminPanel() {
       return;
     }
 
-    alert(
-      "Workshop wurde gelöscht."
-    );
-
+    alert("Workshop wurde gelöscht.");
     await loadWorkshops();
   }
 
-  async function loadParticipants(
-    workshopId
-  ) {
-    const {
-      data,
-      error
-    } = await supabase
-      .from(
-        "workshop_interests"
-      )
-      .select(
-        "user_id,level"
-      )
-      .eq(
-        "workshop_id",
-        workshopId
-      );
+  async function loadParticipants(workshopId) {
+    const { data, error } = await supabase
+      .from("workshop_interests")
+      .select("user_id,level")
+      .eq("workshop_id", workshopId);
 
     if (error) {
       alert(
@@ -2852,34 +1992,21 @@ function AdminPanel() {
       return;
     }
 
-    const ids =
-      (data || []).map(
-        x => x.user_id
-      );
+    const ids = (data || []).map(x => x.user_id);
 
     if (!ids.length) {
-      setParticipants(
-        prev => ({
-          ...prev,
-          [workshopId]:
-            []
-        })
-      );
+      setParticipants(prev => ({
+        ...prev,
+        [workshopId]: []
+      }));
       return;
     }
 
-    const {
-      data: profiles,
-      error: profileError
-    } = await supabase
-      .from("profiles")
-      .select(
-        "id,display_name,age,gender"
-      )
-      .in(
-        "id",
-        ids
-      );
+    const { data: profiles, error: profileError } =
+      await supabase
+        .from("profiles")
+        .select("id,display_name,age,gender")
+        .in("id", ids);
 
     if (profileError) {
       alert(
@@ -2889,230 +2016,114 @@ function AdminPanel() {
       return;
     }
 
-    const result =
-      (data || []).map(
-        item => {
-          const profile =
-            (
-              profiles || []
-            ).find(
-              p =>
-                p.id ===
-                item.user_id
-            );
-
-          return {
-            ...item,
-            profile
-          };
-        }
+    const result = (data || []).map(item => {
+      const profile = (profiles || []).find(
+        p => p.id === item.user_id
       );
 
-    setParticipants(
-      prev => ({
-        ...prev,
-        [workshopId]:
-          result
-      })
-    );
+      return {
+        ...item,
+        profile
+      };
+    });
+
+    setParticipants(prev => ({
+      ...prev,
+      [workshopId]: result
+    }));
   }
 
   function formatDate(iso) {
-    return new Intl.DateTimeFormat(
-      "de-DE",
-      {
-        timeZone:
-          "Europe/Berlin",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric"
-      }
-    ).format(
-      new Date(iso)
-    );
+    return new Intl.DateTimeFormat("de-DE", {
+      timeZone: "Europe/Berlin",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    }).format(new Date(iso));
   }
 
   function formatTime(iso) {
-    return new Intl.DateTimeFormat(
-      "de-DE",
-      {
-        timeZone:
-          "Europe/Berlin",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-      }
-    ).format(
-      new Date(iso)
-    );
+    return new Intl.DateTimeFormat("de-DE", {
+      timeZone: "Europe/Berlin",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).format(new Date(iso));
   }
 
   return (
     <section>
       <div className="hero">
-        <h2>
-          🔐 Administrator
-        </h2>
+        <h2>🔐 Administrator</h2>
 
-        <p>
-          Verwaltung der
-          Tanzpartnerbörse
-        </p>
+        <p>Verwaltung der Tanzpartnerbörse</p>
       </div>
 
       {view === "menu" && (
         <div className="grid">
-
           <button
-            className="profile-card"
+            className="profile-card admin-menu-button"
             onClick={() => {
-              setView(
-                "users"
-              );
+              setView("users");
               loadUsers();
             }}
           >
-            <h3>
-              👥 Nutzerverwaltung
-            </h3>
+            <h3>👥 Nutzerverwaltung</h3>
 
             <p className="muted">
-              Nutzer anzeigen,
-              sperren und
-              entsperren.
+              Nutzer anzeigen, sperren und entsperren.
             </p>
           </button>
 
           <button
-            className="profile-card"
+            className="profile-card admin-menu-button"
             onClick={() => {
-              setView(
-                "workshops"
-              );
+              setView("workshops");
               loadWorkshops();
             }}
           >
-            <h3>
-              🎟️ Workshops
-            </h3>
+            <h3>🎟️ Workshops</h3>
 
             <p className="muted">
-              Workshops und
-              Teilnehmer
-              verwalten.
+              Workshops und Teilnehmer verwalten.
             </p>
           </button>
 
           <button
-            className="profile-card"
-            onClick={() =>
-              setView(
-                "contacts"
-              )
-            }
+            className="profile-card admin-menu-button"
+            onClick={() => setView("contacts")}
           >
-            <h3>
-              💬 Kontaktanfragen
-            </h3>
+            <h3>💬 Kontaktanfragen</h3>
 
             <p className="muted">
-              Kontaktanfragen
-              verwalten.
+              Kontaktanfragen verwalten.
             </p>
           </button>
 
-          <button
-            className="profile-card"
-            onClick={() =>
-              setView(
-                "background"
-              )
-            }
-          >
-            <h3>
-              🎨 Login-Hintergrund
-            </h3>
+          <div className="profile-card">
+            <h3>🎨 Login-Hintergrund</h3>
 
             <p className="muted">
-              Hintergrundbild der
-              Anmeldeseite ändern.
-            </p>
-          </button>
-
-        </div>
-      )}
-
-      {view === "background" && (
-        <div>
-          <button
-            className="ghost"
-            onClick={() =>
-              setView("menu")
-            }
-          >
-            ← Zurück
-          </button>
-
-          <h2>
-            🎨 Login-Hintergrund
-          </h2>
-
-          <div className="card">
-
-            <h3>
-              Aktuelles Hintergrundbild
-            </h3>
-
-            <img
-              src={`${LOGIN_BACKGROUND_URL}?v=${backgroundVersion}`}
-              alt="Login-Hintergrund"
-              style={{
-                width: "100%",
-                maxHeight: "350px",
-                objectFit: "cover",
-                borderRadius: "16px",
-                display: "block",
-                marginBottom: "18px"
-              }}
-            />
-
-            <p className="muted">
-              Hier kannst du das Bild der
-              Anmeldeseite direkt vom Handy
-              austauschen.
+              Das aktuelle Hintergrundbild wird direkt aus
+              deinem öffentlichen Supabase-Bucket geladen.
             </p>
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={
-                uploadLoginBackground
-              }
-              style={{
-                display: "none"
-              }}
-            />
-
-            <button
-              className="primary"
-              onClick={
-                openBackgroundPicker
-              }
-              disabled={
-                backgroundUploading
-              }
-            >
-              {backgroundUploading
-                ? "Bild wird hochgeladen…"
-                : "📷 Neues Bild auswählen"}
-            </button>
+            <div className="background-preview">
+              <img
+                src={LOGIN_BACKGROUND_URL}
+                alt="Login-Hintergrund"
+              />
+            </div>
 
             <p className="small">
-              JPG, PNG oder andere Bildformate.
-              Maximale Größe: 10 MB.
+              Aktuelle Datei: <b>login-bg.png</b>
             </p>
 
+            <div className="notice">
+              Um das Bild zu wechseln, ersetze in Supabase
+              Storage die Datei <b>login-bg.png</b> im Bucket
+              <b> app-images</b>.
+            </div>
           </div>
         </div>
       )}
@@ -3120,41 +2131,28 @@ function AdminPanel() {
       {view === "users" && (
         <div>
           <button
-            onClick={() =>
-              setView("menu")
-            }
+            className="ghost"
+            onClick={() => setView("menu")}
           >
             ← Zurück
           </button>
 
-          <h2>
-            👥 Nutzerverwaltung
-          </h2>
+          <h2>👥 Nutzerverwaltung</h2>
 
-          {loading && (
-            <p>
-              Lade Nutzer …
+          {loading && <p>Lade Nutzer …</p>}
+
+          {!loading && users.length === 0 && (
+            <p className="muted">
+              Keine Nutzer gefunden.
             </p>
           )}
-
-          {!loading &&
-            users.length ===
-              0 && (
-              <p className="muted">
-                Keine Nutzer
-                gefunden.
-              </p>
-            )}
 
           {users.map(user => (
             <article
               className="profile-card"
               key={user.id}
             >
-              <h3>
-                {user.display_name ||
-                  "Ohne Namen"}
-              </h3>
+              <h3>{user.display_name || "Ohne Namen"}</h3>
 
               <p>
                 {user.age
@@ -3173,10 +2171,13 @@ function AdminPanel() {
               </p>
 
               <button
+                className={
+                  user.is_blocked
+                    ? "primary"
+                    : "ghost"
+                }
                 onClick={() =>
-                  toggleBlocked(
-                    user
-                  )
+                  toggleBlocked(user)
                 }
               >
                 {user.is_blocked
@@ -3191,193 +2192,126 @@ function AdminPanel() {
       {view === "workshops" && (
         <div>
           <button
-            onClick={() =>
-              setView("menu")
-            }
+            className="ghost"
+            onClick={() => setView("menu")}
           >
             ← Zurück
           </button>
 
-          <h2>
-            🎟️ Workshop-Verwaltung
-          </h2>
+          <h2>🎟️ Workshop-Verwaltung</h2>
 
           <button
+            className="primary"
             onClick={addWorkshop}
           >
-            ➕ Neuen Workshop
-            hinzufügen
+            ➕ Neuen Workshop hinzufügen
           </button>
 
-          {loading && (
-            <p>
-              Lade Workshops …
-            </p>
-          )}
+          {loading && <p>Lade Workshops …</p>}
 
-          {workshops.map(
-            workshop => (
-              <article
-                className="profile-card"
-                key={workshop.id}
+          {workshops.map(workshop => (
+            <article
+              className="profile-card"
+              key={workshop.id}
+            >
+              <h3>
+                🎟️ {formatDate(workshop.starts_at)}
+              </h3>
+
+              <h2>{workshop.title}</h2>
+
+              <p>
+                🕐 {formatTime(workshop.starts_at)} Uhr
+              </p>
+
+              {workshop.location && (
+                <p>📍 {workshop.location}</p>
+              )}
+
+              <button
+                className="ghost"
+                onClick={() =>
+                  loadParticipants(workshop.id)
+                }
               >
-                <h3>
-                  🎟️{" "}
-                  {formatDate(
-                    workshop.starts_at
-                  )}
-                </h3>
+                👥 Teilnehmer anzeigen
+              </button>
 
-                <h2>
-                  {workshop.title}
-                </h2>
-
-                <p>
-                  🕐{" "}
-                  {formatTime(
-                    workshop.starts_at
-                  )}{" "}
-                  Uhr
-                </p>
-
-                {workshop.location && (
-                  <p>
-                    📍{" "}
-                    {
-                      workshop.location
-                    }
-                  </p>
-                )}
-
+              <div className="admin-actions">
                 <button
+                  className="ghost"
                   onClick={() =>
-                    loadParticipants(
-                      workshop.id
-                    )
+                    editWorkshop(workshop)
                   }
                 >
-                  👥 Teilnehmer anzeigen
+                  ✏️ Bearbeiten
                 </button>
 
-                <div
-                  style={{
-                    display:
-                      "flex",
-                    gap: "10px",
-                    marginTop:
-                      "10px"
-                  }}
+                <button
+                  className="ghost danger"
+                  onClick={() =>
+                    deleteWorkshop(workshop)
+                  }
                 >
-                  <button
-                    onClick={() =>
-                      editWorkshop(
-                        workshop
-                      )
-                    }
-                  >
-                    ✏️ Bearbeiten
-                  </button>
+                  🗑️ Löschen
+                </button>
+              </div>
 
-                  <button
-                    onClick={() =>
-                      deleteWorkshop(
-                        workshop
-                      )
-                    }
-                  >
-                    🗑️ Löschen
-                  </button>
-                </div>
+              {participants[workshop.id] && (
+                <div className="participants">
+                  <h3>
+                    Teilnehmer (
+                    {participants[workshop.id].length}
+                    )
+                  </h3>
 
-                {participants[
-                  workshop.id
-                ] && (
-                  <div
-                    style={{
-                      marginTop:
-                        "15px"
-                    }}
-                  >
-                    <h3>
-                      Teilnehmer (
-                      {
-                        participants[
-                          workshop.id
-                        ].length
-                      }
-                      )
-                    </h3>
+                  {participants[workshop.id].length === 0 && (
+                    <p className="muted">
+                      Noch keine Teilnehmer.
+                    </p>
+                  )}
 
-                    {participants[
-                      workshop.id
-                    ].length ===
-                      0 && (
-                      <p className="muted">
-                        Noch keine
-                        Teilnehmer.
-                      </p>
-                    )}
+                  {participants[workshop.id].map(
+                    participant => (
+                      <div
+                        key={participant.user_id}
+                        className="participant"
+                      >
+                        <strong>
+                          {participant.profile
+                            ?.display_name ||
+                            "Unbekannter Nutzer"}
+                        </strong>
 
-                    {participants[
-                      workshop.id
-                    ].map(
-                      participant => (
-                        <div
-                          key={
-                            participant.user_id
-                          }
-                          style={{
-                            padding:
-                              "10px 0",
-                            borderBottom:
-                              "1px solid #eee"
-                          }}
-                        >
-                          <strong>
-                            {participant
-                              .profile
-                              ?.display_name ||
-                              "Unbekannter Nutzer"}
-                          </strong>
-
-                          <div>
-                            {participant
-                              .level ||
-                              "Niveau nicht angegeben"}
-                          </div>
+                        <div>
+                          {participant.level ||
+                            "Niveau nicht angegeben"}
                         </div>
-                      )
-                    )}
-                  </div>
-                )}
-              </article>
-            )
-          )}
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
+            </article>
+          ))}
         </div>
       )}
 
       {view === "contacts" && (
         <div>
           <button
-            onClick={() =>
-              setView("menu")
-            }
+            className="ghost"
+            onClick={() => setView("menu")}
           >
             ← Zurück
           </button>
 
-          <h2>
-            💬 Kontaktanfragen
-          </h2>
+          <h2>💬 Kontaktanfragen</h2>
 
           <article className="profile-card">
             <p>
-              Die Kontaktverwaltung
-              wird als nächster
-              Schritt mit deiner
-              vorhandenen
-              Kontakt-Tabelle
-              verbunden.
+              Die Kontaktverwaltung wird als nächster Schritt
+              mit deiner vorhandenen Kontakt-Tabelle verbunden.
             </p>
           </article>
         </div>
@@ -3387,14 +2321,9 @@ function AdminPanel() {
 }
 
 function ResetPassword({ onDone }) {
-  const [password, setPassword] =
-    useState("");
-
-  const [busy, setBusy] =
-    useState(false);
-
-  const [message, setMessage] =
-    useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
 
   async function submit(e) {
     e.preventDefault();
@@ -3409,19 +2338,14 @@ function ResetPassword({ onDone }) {
     setBusy(true);
     setMessage("");
 
-    const { error } =
-      await supabase.auth.updateUser({
-        password
-      });
+    const { error } = await supabase.auth.updateUser({
+      password
+    });
 
     if (error) {
-      setMessage(
-        error.message
-      );
+      setMessage(error.message);
     } else {
-      setMessage(
-        "Passwort wurde geändert."
-      );
+      setMessage("Passwort wurde geändert.");
 
       setTimeout(() => {
         onDone();
@@ -3432,26 +2356,23 @@ function ResetPassword({ onDone }) {
   }
 
   return (
-    <div className="auth-shell">
+    <div
+      className="auth-shell"
+      style={{
+        backgroundImage: `linear-gradient(#00000055,#00000055), url("${LOGIN_BACKGROUND_URL}")`
+      }}
+    >
       <div className="auth-card">
-        <h2>
-          Neues Passwort
-        </h2>
+        <h2>Neues Passwort</h2>
 
-        <form
-          onSubmit={submit}
-        >
+        <form onSubmit={submit}>
           <label>
             Neues Passwort
 
             <input
               type="password"
               value={password}
-              onChange={e =>
-                setPassword(
-                  e.target.value
-                )
-              }
+              onChange={e => setPassword(e.target.value)}
               minLength="6"
               required
             />
@@ -3468,17 +2389,11 @@ function ResetPassword({ onDone }) {
         </form>
 
         {message && (
-          <div className="notice">
-            {message}
-          </div>
+          <div className="notice">{message}</div>
         )}
       </div>
     </div>
   );
 }
 
-createRoot(
-  document.getElementById("root")
-).render(
-  <App />
-);
+createRoot(document.getElementById("root")).render(<App />);
