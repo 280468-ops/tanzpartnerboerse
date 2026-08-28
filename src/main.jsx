@@ -185,8 +185,8 @@ function Auth() {
         <div className="logo">💃🕺</div>
         <h1>Tanzpartnerbörse</h1>
         <p className="muted">
-          Finde Menschen, die deine Leidenschaft fürs Tanzen teilen.
-        </p>
+  Finde deinen Tanzpartner für die Workshops
+</p>
 
         <div className="tabs">
           <button
