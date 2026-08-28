@@ -2025,7 +2025,15 @@ async function deleteWorkshop(workshop) {
               >
                 👥 Teilnehmer anzeigen
               </button>
+<div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+  <button onClick={() => editWorkshop(workshop)}>
+    ✏️ Bearbeiten
+  </button>
 
+  <button onClick={() => deleteWorkshop(workshop)}>
+    🗑️ Löschen
+  </button>
+</div>
               {participants[workshop.id] && (
                 <div style={{ marginTop: "15px" }}>
                   <h3>
