@@ -1633,6 +1633,138 @@ function Contacts({ userId }) {
 
 
 function AdminPanel() {
+  const [view, setView] = useState("menu");
+  const [users, setUsers] = useState([]);
+  const [workshops, setWorkshops] = useState([]);
+  const [participants, setParticipants] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  async function loadUsers() {
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, display_name, age, gender, is_visible, is_blocked")
+      .order("display_name");
+
+    setLoading(false);
+
+    if (error) {
+      alert("Fehler beim Laden der Nutzer: " + error.message);
+      return;
+    }
+
+    setUsers(data || []);
+  }
+
+  async function toggleBlocked(user) {
+    const newValue = !user.is_blocked;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ is_blocked: newValue })
+      .eq("id", user.id);
+
+    if (error) {
+      alert("Fehler: " + error.message);
+      return;
+    }
+
+    setUsers(prev =>
+      prev.map(u =>
+        u.id === user.id
+          ? { ...u, is_blocked: newValue }
+          : u
+      )
+    );
+  }
+
+  async function loadWorkshops() {
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from("workshops")
+      .select(
+        "id, title, starts_at, location, booking_url, dance_styles(name)"
+      )
+      .order("starts_at");
+
+    setLoading(false);
+
+    if (error) {
+      alert("Fehler beim Laden der Workshops: " + error.message);
+      return;
+    }
+
+    setWorkshops(data || []);
+  }
+
+  async function loadParticipants(workshopId) {
+    const { data, error } = await supabase
+      .from("workshop_interests")
+      .select("user_id, level")
+      .eq("workshop_id", workshopId);
+
+    if (error) {
+      alert("Fehler beim Laden der Teilnehmer: " + error.message);
+      return;
+    }
+
+    const ids = (data || []).map(x => x.user_id);
+
+    if (!ids.length) {
+      setParticipants(prev => ({
+        ...prev,
+        [workshopId]: []
+      }));
+      return;
+    }
+
+    const { data: profiles, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, display_name, age, gender")
+      .in("id", ids);
+
+    if (profileError) {
+      alert("Fehler beim Laden der Profile: " + profileError.message);
+      return;
+    }
+
+    const result = (data || []).map(item => {
+      const profile = (profiles || []).find(
+        p => p.id === item.user_id
+      );
+
+      return {
+        ...item,
+        profile
+      };
+    });
+
+    setParticipants(prev => ({
+      ...prev,
+      [workshopId]: result
+    }));
+  }
+
+  function formatDate(iso) {
+    return new Intl.DateTimeFormat("de-DE", {
+      timeZone: "Europe/Berlin",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    }).format(new Date(iso));
+  }
+
+  function formatTime(iso) {
+    return new Intl.DateTimeFormat("de-DE", {
+      timeZone: "Europe/Berlin",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).format(new Date(iso));
+  }
+
   return (
     <section>
       <div className="hero">
@@ -1640,28 +1772,192 @@ function AdminPanel() {
         <p>Verwaltung der Tanzpartnerbörse</p>
       </div>
 
-      <div className="grid">
-        <article className="profile-card">
-          <h3>👥 Nutzerverwaltung</h3>
-          <p className="muted">
-            Admin-Bereich funktioniert.
-          </p>
-        </article>
+      {view === "menu" && (
+        <div className="grid">
 
-        <article className="profile-card">
-          <h3>🎟️ Workshops</h3>
-          <p className="muted">
-            Workshop-Verwaltung folgt.
-          </p>
-        </article>
+          <button
+            className="profile-card"
+            onClick={() => {
+              setView("users");
+              loadUsers();
+            }}
+          >
+            <h3>👥 Nutzerverwaltung</h3>
+            <p className="muted">
+              Nutzer anzeigen, sperren und entsperren.
+            </p>
+          </button>
 
-        <article className="profile-card">
-          <h3>💬 Kontaktanfragen</h3>
-          <p className="muted">
-            Kontaktverwaltung folgt.
-          </p>
-        </article>
-      </div>
+          <button
+            className="profile-card"
+            onClick={() => {
+              setView("workshops");
+              loadWorkshops();
+            }}
+          >
+            <h3>🎟️ Workshops</h3>
+            <p className="muted">
+              Workshops und Teilnehmer verwalten.
+            </p>
+          </button>
+
+          <button
+            className="profile-card"
+            onClick={() => setView("contacts")}
+          >
+            <h3>💬 Kontaktanfragen</h3>
+            <p className="muted">
+              Kontaktanfragen verwalten.
+            </p>
+          </button>
+
+        </div>
+      )}
+
+      {view === "users" && (
+        <div>
+          <button onClick={() => setView("menu")}>
+            ← Zurück
+          </button>
+
+          <h2>👥 Nutzerverwaltung</h2>
+
+          {loading && <p>Lade Nutzer …</p>}
+
+          {!loading && users.length === 0 && (
+            <p className="muted">Keine Nutzer gefunden.</p>
+          )}
+
+          {users.map(user => (
+            <article
+              className="profile-card"
+              key={user.id}
+            >
+              <h3>
+                {user.display_name || "Ohne Namen"}
+              </h3>
+
+              <p>
+                {user.age ? `${user.age} Jahre` : "Alter nicht angegeben"}
+                {" · "}
+                {user.gender || "Geschlecht nicht angegeben"}
+              </p>
+
+              <p>
+                Status:{" "}
+                {user.is_blocked
+                  ? "🔒 Gesperrt"
+                  : "🟢 Aktiv"}
+              </p>
+
+              <button
+                onClick={() => toggleBlocked(user)}
+              >
+                {user.is_blocked
+                  ? "🔓 Entsperren"
+                  : "🔒 Nutzer sperren"}
+              </button>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {view === "workshops" && (
+        <div>
+          <button onClick={() => setView("menu")}>
+            ← Zurück
+          </button>
+
+          <h2>🎟️ Workshop-Verwaltung</h2>
+
+          {loading && <p>Lade Workshops …</p>}
+
+          {workshops.map(workshop => (
+            <article
+              className="profile-card"
+              key={workshop.id}
+            >
+              <h3>
+                🎟️ {formatDate(workshop.starts_at)}
+              </h3>
+
+              <h2>{workshop.title}</h2>
+
+              <p>
+                🕐 {formatTime(workshop.starts_at)} Uhr
+              </p>
+
+              {workshop.location && (
+                <p>
+                  📍 {workshop.location}
+                </p>
+              )}
+
+              <button
+                onClick={() => loadParticipants(workshop.id)}
+              >
+                👥 Teilnehmer anzeigen
+              </button>
+
+              {participants[workshop.id] && (
+                <div style={{ marginTop: "15px" }}>
+                  <h3>
+                    Teilnehmer (
+                    {participants[workshop.id].length}
+                    )
+                  </h3>
+
+                  {participants[workshop.id].length === 0 && (
+                    <p className="muted">
+                      Noch keine Teilnehmer.
+                    </p>
+                  )}
+
+                  {participants[workshop.id].map(
+                    participant => (
+                      <div
+                        key={participant.user_id}
+                        style={{
+                          padding: "10px 0",
+                          borderBottom:
+                            "1px solid #eee"
+                        }}
+                      >
+                        <strong>
+                          {participant.profile?.display_name ||
+                            "Unbekannter Nutzer"}
+                        </strong>
+
+                        <div>
+                          {participant.level ||
+                            "Niveau nicht angegeben"}
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+
+      {view === "contacts" && (
+        <div>
+          <button onClick={() => setView("menu")}>
+            ← Zurück
+          </button>
+
+          <h2>💬 Kontaktanfragen</h2>
+
+          <article className="profile-card">
+            <p>
+              Die Kontaktverwaltung wird als nächster Schritt
+              mit deiner vorhandenen Kontakt-Tabelle verbunden.
+            </p>
+          </article>
+        </div>
+      )}
     </section>
   );
 }
