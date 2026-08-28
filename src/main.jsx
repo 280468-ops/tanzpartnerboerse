@@ -802,45 +802,60 @@ function ProfileEditor({ user, profile, setProfile }) {
   }
 
   async function save(e) {
-    e.preventDefault();
-    setBusy(true);
+  async function save(e) {
+  e.preventDefault();
+  setBusy(true);
 
+  try {
     const payload = {
-      id: user.id,
-      display_name: (
-        form.display_name || "Tanzpartner"
-      ).trim(),
+      display_name: (form.display_name || "").trim() || "Tanzpartner",
       age: form.age ? Number(form.age) : null,
       gender: form.gender || null,
-      height_cm: form.height_cm
-        ? Number(form.height_cm)
-        : null,
-      is_visible: form.is_visible !== false
+      height_cm: form.height_cm ? Number(form.height_cm) : null,
+      is_visible: form.is_visible !== false,
+      updated_at: new Date().toISOString()
     };
 
     const { data, error } = await supabase
       .from("profiles")
-      .upsert(payload)
+      .update(payload)
+      .eq("id", user.id)
       .select()
       .single();
 
     if (error) {
-      alert(error.message);
+      alert("Profil konnte nicht gespeichert werden:\n" + error.message);
       setBusy(false);
       return;
     }
 
     const { error: contactError } = await supabase
       .from("contact_details")
-      .upsert({
-        user_id: user.id,
-        email:
-          (contact.email || user.email || "").trim() ||
-          null,
-        phone: (contact.phone || "").trim() || null,
-        share_contacts:
-          contact.share_contacts === true
-      });
+      .upsert(
+        {
+          user_id: user.id,
+          email: (contact.email || user.email || "").trim() || null,
+          phone: (contact.phone || "").trim() || null,
+          share_contacts: contact.share_contacts === true
+        },
+        { onConflict: "user_id" }
+      );
+
+    if (contactError) {
+      alert("Kontaktdaten konnten nicht gespeichert werden:\n" + contactError.message);
+      setBusy(false);
+      return;
+    }
+
+    setProfile(data);
+
+    alert("Profil gespeichert ✅");
+  } catch (err) {
+    alert("Fehler beim Speichern:\n" + (err.message || "Unbekannter Fehler"));
+  } finally {
+    setBusy(false);
+  }
+  }
 
     if (contactError) {
       alert(contactError.message);
