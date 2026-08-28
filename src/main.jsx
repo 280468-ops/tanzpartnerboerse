@@ -1687,7 +1687,7 @@ useEffect(() => {
 
   const { data, error } = await supabase
     .from("workshops")
-    .select("id, title, starts_at, location, booking_url, dance_style")
+    .select("id, title, starts_at, location, booking_url")
     .order("starts_at");
 
   setLoading(false);
