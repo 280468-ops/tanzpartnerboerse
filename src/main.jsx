@@ -254,6 +254,7 @@ function Auth() {
 }
 
 function Dashboard({ session }) {
+  if (!session?.user) return null;
   const [tab, setTab] = useState("admin");
   const [profile, setProfile] = useState(null);
 
