@@ -1723,8 +1723,9 @@ B B
 
   const [day, month, year] = parts;
 
-  const startsAt =
-    `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${time}:00`;
+const startAt = new Date(
+  `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${time}:00`
+).toISOString();
 
   const { data, error } = await supabase
     .from("workshops")
