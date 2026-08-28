@@ -449,7 +449,7 @@ function Workshops({ currentUser }) {
 
     const date = new Intl.DateTimeFormat("de-DE", {
       timeZone: "Europe/Berlin",
-      weekday: "2-digit",
+      weekday: "long",
       day: "2-digit",
       month: "2-digit",
       year: "numeric"
