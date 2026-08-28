@@ -1897,6 +1897,9 @@ function AdminPanel() {
 
           <h2>🎟️ Workshop-Verwaltung</h2>
 
+          <button onClick={addWorkshop}>
+  ➕ Neuen Workshop hinzufügen
+</button>
           {loading && <p>Lade Workshops …</p>}
 
           {workshops.map(workshop => (
