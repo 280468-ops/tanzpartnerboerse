@@ -13,7 +13,7 @@ export default async (request, context) => {
 
   // Version 4: richtiges Peter-&-Bettina-Bild + Cache-Buster
   const defaultImage = new URL(
-    "/tanzpartnerboerse_og.png?v=263",
+    "/tanzpartnerboerse_og.png?v=264",
     url.origin
   ).href;
 
