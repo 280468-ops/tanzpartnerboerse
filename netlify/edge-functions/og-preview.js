@@ -13,7 +13,7 @@ export default async (request, context) => {
 
   // Version 4: richtiges Peter-&-Bettina-Bild + Cache-Buster
   const defaultImage = new URL(
-    "/tanzpartnerboerse_og.png?v=264",
+    "/tanzpartnerboerse_og.png?v=263",
     url.origin
   ).href;
 
@@ -38,7 +38,7 @@ export default async (request, context) => {
       "Peter & Bettina’s Tanzpartnerbörse – Workshops & Tanzen im Sonnenhof";
 
     image = new URL(
-      "/workshop_paaranmeldung_og.png?v=263",
+      "/workshop_paaranmeldung_og.png?v=264",
       url.origin
     ).href;
   }
