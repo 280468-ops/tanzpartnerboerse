@@ -11,13 +11,12 @@
   "lang": "de",
   "icons": [
     {
-      "src": "/icons/tanzpartnerboerse-neu-192.png",
-      "sizes": "192x192",
+      "src": "/icons/workshops-icon-192.png", 
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/tanzpartnerboerse-neu-512.png",
+      "src": "/icons/workshops-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
