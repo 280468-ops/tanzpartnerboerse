@@ -552,7 +552,7 @@ async function sendRecurringWorkshopConfirmation({
 // Eine stabile URL ermöglicht dem Browser, das Bild zwischen Seitenaufrufen wiederzuverwenden.
 // Nach einem Bildaustausch kann bei Bedarf eine feste Versionsnummer ergänzt werden.
 const LOGIN_BACKGROUND_URL =
-  "https://nzyenvwmnaokqsxsjcyf.supabase.co/storage/v1/object/public/app-images/login-bg-q50.webp";
+  "https://nzyenvwmnaokqsxsjcyf.supabase.co/storage/v1/object/public/app-images/login-bg-q50.webp?v=20261114-bluegold";
 
 // Zentrales Workshop-Standardbild.
 // Im Admin-Bereich kann dieses Bild unter „Workshop-Titelbild“ geändert werden.
